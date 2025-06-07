@@ -3,6 +3,7 @@ import { Settings, Plus, Upload, Download, Save, Trash2, Edit3, Calendar, Mail }
 import { FAQ, AppData, MeetingDate } from '../types';
 import { exportData, importData } from '../utils/storage';
 import { extractTextFromDocx, extractTextFromPdf, parseQuestionsFromText } from '../utils/fileProcessing';
+import { useNotifications } from './Notifications';
 
 interface AdminPanelProps {
   data: AppData;
@@ -20,10 +21,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
   });
   const [tempSettings, setTempSettings] = useState(data.settings);
   const [isImporting, setIsImporting] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const { notify } = useNotifications();
 
   const handleAddFaq = () => {
     if (!newFaq.question.trim() || !newFaq.answer.trim()) {
-      alert('Veuillez remplir au moins la question et la réponse.');
+      notify('Veuillez remplir au moins la question et la réponse.', 'error');
       return;
     }
 
@@ -37,12 +41,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
       updatedAt: new Date().toISOString()
     };
 
+    setIsAdding(true);
     onDataChange({
       ...data,
       faqs: [...data.faqs, faq]
     });
 
     setNewFaq({ question: '', answer: '', category: '', keywords: '' });
+    setTimeout(() => {
+      setIsAdding(false);
+      notify('FAQ ajoutée', 'success');
+    }, 500);
   };
 
   const handleEditFaq = (faq: FAQ) => {
@@ -77,15 +86,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
         ...data,
         faqs: data.faqs.filter(faq => faq.id !== id)
       });
+      notify('FAQ supprimée', 'info');
     }
   };
 
   const handleSaveSettings = () => {
+    setIsSaving(true);
     onDataChange({
       ...data,
       settings: tempSettings
     });
-    alert('Paramètres sauvegardés !');
+    setTimeout(() => {
+      setIsSaving(false);
+      notify('Paramètres sauvegardés !', 'success');
+    }, 500);
   };
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,14 +119,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
         window.location.reload();
         return;
       } else {
-        alert('Format de fichier non supporté. Utilisez .docx, .pdf ou .json');
+        notify('Format de fichier non supporté. Utilisez .docx, .pdf ou .json', 'error');
         return;
       }
 
       const parsedQAs = parseQuestionsFromText(text);
       
       if (parsedQAs.length === 0) {
-        alert('Aucune question/réponse détectée dans le fichier.');
+        notify('Aucune question/réponse détectée dans le fichier.', 'error');
         return;
       }
 
@@ -131,10 +145,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
         faqs: [...data.faqs, ...newFaqs]
       });
 
-      alert(`${newFaqs.length} questions importées avec succès !`);
+      notify(`${newFaqs.length} questions importées avec succès !`, 'success');
     } catch (error) {
       console.error('Import error:', error);
-      alert('Erreur lors de l\'importation du fichier.');
+      notify("Erreur lors de l'importation du fichier.", 'error');
     } finally {
       setIsImporting(false);
       event.target.value = '';
@@ -249,14 +263,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
                     onChange={(e) => setNewFaq({ ...newFaq, keywords: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     placeholder="Séparés par des virgules"
+                    title="Entrez des mots-clés pour faciliter la recherche"
                   />
                 </div>
               </div>
               <button
                 onClick={handleAddFaq}
                 className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                disabled={isAdding}
               >
-                <Plus className="h-4 w-4" />
+                {isAdding ? (
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
                 <span>Ajouter la FAQ</span>
               </button>
             </div>
@@ -396,6 +416,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
                 <button
                   onClick={addMeetingDate}
                   className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors flex items-center space-x-1"
+                  title="Ajouter une nouvelle date"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Ajouter</span>
@@ -441,8 +462,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
             <button
               onClick={handleSaveSettings}
               className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+              disabled={isSaving}
             >
-              <Save className="h-4 w-4" />
+              {isSaving ? (
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
               <span>Sauvegarder les paramètres</span>
             </button>
           </div>
@@ -458,7 +484,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
                 Importez des questions/réponses depuis des fichiers Word (.docx), PDF (.pdf) ou des sauvegardes JSON.
               </p>
               <div className="flex items-center space-x-4">
-                <label className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer flex items-center space-x-2">
+                <label className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer flex items-center space-x-2" title="Importer depuis un fichier">
                   <Upload className="h-4 w-4" />
                   <span>{isImporting ? 'Importation...' : 'Choisir un fichier'}</span>
                   <input
@@ -466,6 +492,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
                     accept=".docx,.pdf,.json"
                     onChange={handleFileImport}
                     className="hidden"
+                    aria-label="Fichier à importer"
                     disabled={isImporting}
                   />
                 </label>

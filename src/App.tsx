@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNotifications } from './components/Notifications';
 import { loadData, saveData } from './utils/storage';
 import { AppData } from './types';
 import Header from './components/Header';
@@ -15,6 +16,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [activeView, setActiveView] = useState<'faq' | 'submit' | 'admin'>('faq');
+  const { notify } = useNotifications();
 
   // Save data whenever it changes
   useEffect(() => {
@@ -46,6 +48,7 @@ function App() {
     if (isAdmin) {
       setIsAdmin(false);
       setActiveView('faq');
+      notify('Mode administrateur désactivé', 'info');
     } else {
       setShowAdminLogin(true);
     }
@@ -56,8 +59,9 @@ function App() {
       setIsAdmin(true);
       setShowAdminLogin(false);
       setActiveView('admin');
+      notify('Mode administrateur activé', 'success');
     } else {
-      alert('Code administrateur incorrect.');
+      notify('Code administrateur incorrect.', 'error');
     }
   };
 
@@ -112,7 +116,7 @@ function App() {
               onCategoryChange={setSelectedCategory}
               categories={categories}
             />
-            <FAQList faqs={filteredFaqs} />
+            <FAQList faqs={filteredFaqs} searchTerm={searchTerm} />
           </div>
         )}
 
