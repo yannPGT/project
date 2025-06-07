@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Send, Mail, CheckCircle } from 'lucide-react';
 import { Company } from '../types';
+import { useNotifications } from './Notifications';
 
 interface QuestionFormProps {
   companies: Company[];
@@ -13,12 +14,13 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ companies, contactEmail }) 
     question: ''
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const { notify } = useNotifications();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.company || !formData.question.trim()) {
-      alert('Veuillez remplir tous les champs.');
+      notify('Veuillez remplir tous les champs.', 'error');
       return;
     }
 
@@ -28,8 +30,9 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ companies, contactEmail }) 
     
     const mailtoLink = `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoLink;
-    
+
     setIsSubmitted(true);
+    notify('Question envoyée par e-mail', 'success');
     setFormData({ company: '', question: '' });
     
     setTimeout(() => setIsSubmitted(false), 5000);
@@ -90,6 +93,7 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ companies, contactEmail }) 
             value={formData.question}
             onChange={(e) => setFormData({ ...formData, question: e.target.value })}
             placeholder="Décrivez votre question de manière détaillée..."
+            title="Formulez clairement votre demande"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-vertical"
             required
           />
@@ -99,8 +103,9 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ companies, contactEmail }) 
         <button
           type="submit"
           className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
+          aria-label="Envoyer la question"
         >
-          <Send className="h-5 w-5" />
+          <Send aria-hidden="true" className="h-5 w-5" />
           <span>Envoyer la question</span>
         </button>
       </form>

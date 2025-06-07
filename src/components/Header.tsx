@@ -49,6 +49,7 @@ const Header: React.FC<HeaderProps> = ({ meetingDates, isAdmin, onToggleAdmin })
           
           <button
             onClick={onToggleAdmin}
+            aria-label={isAdmin ? 'Désactiver le mode administrateur' : 'Activer le mode administrateur'}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               isAdmin
                 ? 'bg-red-600 text-white hover:bg-red-700'
