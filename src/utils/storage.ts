@@ -11,7 +11,9 @@ const defaultData: AppData = {
       category: 'Plannings',
       keywords: ['planning', 'service', 'horaires'],
       createdAt: '2024-01-15T10:00:00Z',
-      updatedAt: '2024-01-15T10:00:00Z'
+      updatedAt: '2024-01-15T10:00:00Z',
+      company: 'EMGIS1',
+      date: '2024-01-15'
     },
     {
       id: '2',
@@ -20,7 +22,20 @@ const defaultData: AppData = {
       category: 'RH',
       keywords: ['congés', 'vacances', 'demande'],
       createdAt: '2024-01-16T14:30:00Z',
-      updatedAt: '2024-01-16T14:30:00Z'
+      updatedAt: '2024-01-16T14:30:00Z',
+      company: 'EMGIS1',
+      date: '2024-01-16'
+    },
+    {
+      id: '3',
+      question: 'Le format des CCPM conduit cette année au sein de la compagnie est particulièrement apprécié pour la très grande majorité des SPP de la compagnie [nombreuses sessions d\u2019\u00e9valuations (1/CS/semaine pendant 6 semaines), effectif r\u00e9duit par session (10 \u00e0 15 PAX)]. Comment s\u2019organiseront-ils dans les mois \u00e0 venir ?',
+      answer: 'L\u2019\u00e9volution de la situation sanitaire nous permettra de d\u00e9terminer avec le BOI le portage \u00e0 adopter. Le format propos\u00e9 cette ann\u00e9e a permis de d\u00e9couvrir davantage groupe EPMS de l\u2019EMG1. Les sessions de passage en nombre limit\u00e9 permettent un dialogue plus facile avec les cadres du bureau des sports. En outre, il s\u2019agit d\u2019une r\u00e9flexion plus globale quant \u00e0 l\u2019emploi du G.EPMS de l\u2019EMG1 au profit de l\u2019unit\u00e9. Dans l\u2019id\u00e9al, il s\u2019agit de d\u00e9terminer autant que possible des dates tr\u00e8s r\u00e9guli\u00e8res de passage du personnel qualifi\u00e9 dans les 3 CS de l\u2019unit\u00e9 afin de tirer pleinement parti de leur expertise technique, en dehors de tout contexte d\u00e9valuation.',
+      category: 'CCPM',
+      keywords: [],
+      createdAt: '2021-05-10T00:00:00Z',
+      updatedAt: '2021-05-10T00:00:00Z',
+      company: '14e compagnie',
+      date: '2021-05-10'
     }
   ],
   companies: [
@@ -70,7 +85,12 @@ export const loadData = (): AppData => {
         settings: {
           ...defaultData.settings,
           ...data.settings
-        }
+        },
+        faqs: data.faqs.map((f: FAQ) => ({
+          company: '',
+          date: '',
+          ...f
+        }))
       };
     }
   } catch (error) {

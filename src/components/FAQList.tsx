@@ -73,6 +73,12 @@ const FAQList: React.FC<FAQListProps> = ({ faqs, searchTerm }) => {
                     <span>Modifié le {new Date(faq.updatedAt).toLocaleDateString('fr-FR')}</span>
                   </div>
                 )}
+                {(faq.company || faq.date) && (
+                  <div className="flex items-center space-x-1">
+                    {faq.company && <span>{faq.company}</span>}
+                    {faq.date && <span>{faq.date}</span>}
+                  </div>
+                )}
               </div>
               
               {faq.keywords.length > 0 && (
