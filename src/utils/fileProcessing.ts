@@ -63,3 +63,28 @@ export const parseQuestionsFromText = (text: string): Array<{ question: string; 
 
   return qaList;
 };
+
+export interface ImportedQuestion {
+  date?: string;
+  compagnie?: string;
+  question: string;
+  reponse: string;
+}
+
+export const parseQuestionsFromJson = (json: string): Array<ImportedQuestion> => {
+  try {
+    const data = JSON.parse(json);
+    const items = Array.isArray(data) ? data : [data];
+    return items
+      .filter(item => item.question && item.reponse)
+      .map(item => ({
+        date: item.date,
+        compagnie: item.compagnie,
+        question: item.question,
+        reponse: item.reponse
+      }));
+  } catch (error) {
+    console.error('Invalid JSON format:', error);
+    return [];
+  }
+};
