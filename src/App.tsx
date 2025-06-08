@@ -31,12 +31,14 @@ function App() {
   // Filter FAQs based on search and category
   const filteredFaqs = useMemo(() => {
     return data.faqs.filter(faq => {
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !searchTerm ||
         faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
         faq.answer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        faq.keywords.some(keyword => 
+        faq.keywords.some(keyword =>
           keyword.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        ) ||
+        (faq.company && faq.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (faq.date && faq.date.includes(searchTerm));
       
       const matchesCategory = !selectedCategory || faq.category === selectedCategory;
       

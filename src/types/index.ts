@@ -6,6 +6,10 @@ export interface FAQ {
   keywords: string[];
   createdAt: string;
   updatedAt: string;
+  /** Optional company/unit associated with the question */
+  company?: string;
+  /** Optional date provided in imported data */
+  date?: string;
 }
 
 export interface Company {
