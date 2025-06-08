@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Settings, Plus, Upload, Download, Save, Trash2, Edit3, Calendar, Mail } from 'lucide-react';
 import { FAQ, AppData, MeetingDate } from '../types';
-import { exportData, importData } from '../utils/storage';
-import { extractTextFromDocx, extractTextFromPdf, parseQuestionsFromText } from '../utils/fileProcessing';
+import { exportData, saveData } from '../utils/storage';
+import { extractTextFromDocx, extractTextFromPdf, parseQuestionsFromText, parseQuestionsFromJson } from '../utils/fileProcessing';
 import { useNotifications } from './Notifications';
 
 interface AdminPanelProps {
@@ -17,7 +17,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
     question: '',
     answer: '',
     category: '',
-    keywords: ''
+    keywords: '',
+    company: '',
+    date: ''
   });
   const [tempSettings, setTempSettings] = useState(data.settings);
   const [isImporting, setIsImporting] = useState(false);
@@ -38,7 +40,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
       category: newFaq.category || 'Général',
       keywords: newFaq.keywords.split(',').map(k => k.trim()).filter(k => k),
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      company: newFaq.company || undefined,
+      date: newFaq.date || undefined
     };
 
     setIsAdding(true);
@@ -47,7 +51,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
       faqs: [...data.faqs, faq]
     });
 
-    setNewFaq({ question: '', answer: '', category: '', keywords: '' });
+    setNewFaq({ question: '', answer: '', category: '', keywords: '', company: '', date: '' });
     setTimeout(() => {
       setIsAdding(false);
       notify('FAQ ajoutée', 'success');
@@ -109,15 +113,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
     setIsImporting(true);
     try {
       let text = '';
-      
-      if (file.name.endsWith('.docx')) {
+
+      if (file.name.endsWith('.json')) {
+        text = await file.text();
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed.faqs) {
+            saveData(parsed);
+            window.location.reload();
+            return;
+          }
+        } catch {
+          /* not a full backup */
+        }
+
+        const imported = parseQuestionsFromJson(text);
+        if (imported.length === 0) {
+          notify('Aucune question détectée dans le fichier JSON.', 'error');
+          return;
+        }
+
+        const newFaqs: FAQ[] = imported.map((qa, index) => ({
+          id: `import-${Date.now()}-${index}`,
+          question: qa.question,
+          answer: qa.reponse,
+          category: 'Importé',
+          keywords: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          company: qa.compagnie,
+          date: qa.date
+        }));
+
+        onDataChange({
+          ...data,
+          faqs: [...data.faqs, ...newFaqs]
+        });
+
+        notify(`${newFaqs.length} questions importées avec succès !`, 'success');
+        return;
+      } else if (file.name.endsWith('.docx')) {
         text = await extractTextFromDocx(file);
       } else if (file.name.endsWith('.pdf')) {
         text = await extractTextFromPdf(file);
-      } else if (file.name.endsWith('.json')) {
-        await importData(file);
-        window.location.reload();
-        return;
       } else {
         notify('Format de fichier non supporté. Utilisez .docx, .pdf ou .json', 'error');
         return;
@@ -137,7 +175,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
         category: 'Importé',
         keywords: [],
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        company: undefined,
+        date: undefined
       }));
 
       onDataChange({
@@ -266,6 +306,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
                     title="Entrez des mots-clés pour faciliter la recherche"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Compagnie</label>
+                  <select
+                    value={newFaq.company}
+                    onChange={(e) => setNewFaq({ ...newFaq, company: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value="">--</option>
+                    {data.companies.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                  <input
+                    type="date"
+                    value={newFaq.date}
+                    onChange={(e) => setNewFaq({ ...newFaq, date: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
               </div>
               <button
                 onClick={handleAddFaq}
@@ -326,6 +388,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                           </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Compagnie</label>
+                            <select
+                              value={editingFaq.company || ''}
+                              onChange={(e) => setEditingFaq({ ...editingFaq, company: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            >
+                              <option value="">--</option>
+                              {data.companies.map(c => (
+                                <option key={c.id} value={c.name}>{c.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                            <input
+                              type="date"
+                              value={editingFaq.date || ''}
+                              onChange={(e) => setEditingFaq({ ...editingFaq, date: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                          </div>
                         </div>
                         <div className="flex space-x-2">
                           <button
@@ -365,6 +449,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ data, onDataChange }) => {
                         <div className="flex items-center space-x-4 text-xs text-gray-500">
                           <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded">{faq.category}</span>
                           <span>Créé: {new Date(faq.createdAt).toLocaleDateString('fr-FR')}</span>
+                          {(faq.company || faq.date) && (
+                            <span>{faq.company} {faq.date}</span>
+                          )}
                         </div>
                       </div>
                     )}
