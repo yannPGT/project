@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Indicateurs nationaux SYNAPSE</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+:root{
+  --bg:#f8fafc;--card:#fff;--border:#e5e7eb;--text:#111827;--muted:#6b7280;
+  --green:#2e7d32;--orange:#ed6c02;--red:#c62828;--blue:#2563eb;--slate:#475569;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+body{padding:12px}
+.wrap{height:100%;display:grid;grid-template-rows:auto 1fr;gap:10px}
+.header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.title{font-size:18px;font-weight:700}.sub{font-size:12px;color:var(--muted);margin-top:2px}.year{font-size:13px;color:var(--slate);font-weight:700;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-content:start}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;min-height:122px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.label{font-size:12px;color:var(--muted);line-height:1.25}.value{font-size:32px;font-weight:800;line-height:1;margin-top:10px;letter-spacing:-.5px}.hint{font-size:11px;color:var(--muted);margin-top:8px}
+.accent{height:4px;border-radius:99px;margin-top:12px;background:var(--slate)}
+.good .accent{background:var(--green)}.warn .accent{background:var(--orange)}.bad .accent{background:var(--red)}.info .accent{background:var(--blue)}
+.good .value{color:var(--green)}.warn .value{color:var(--orange)}.bad .value{color:var(--red)}.info .value{color:var(--blue)}
+.empty{grid-column:1/-1;background:#fff;border:1px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--muted)}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.value{font-size:28px}}
+@media(max-width:520px){body{padding:8px}.grid{grid-template-columns:1fr}.header{align-items:flex-start;flex-direction:column}.card{min-height:108px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div><div class="title">Synthèse nationale</div><div class="sub">Indicateurs départementaux consolidés</div></div>
+    <div id="year" class="year"></div>
+  </div>
+  <div id="grid" class="grid"><div class="empty">En attente des données Grist…</div></div>
+</div>
+<script>
+"use strict";
+function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
+function pct(v){let n=num(v);if(n<=1)n*=100;return Math.round(n)}
+function fmt(v){return new Intl.NumberFormat('fr-FR').format(num(v))}
+function yearOf(r){const a=r?.Annee;if(a&&typeof a==='object'&&a.rowId!==undefined)return String(a.rowId);if(a!==null&&a!==undefined)return String(a);return''}
+function selected(r){return !('Annee_selectionnee' in r)||r.Annee_selectionnee===true||r.Annee_selectionnee===1}
+function clsPct(p){if(p>=75)return'good';if(p>=50)return'warn';return'bad'}
+function clsDelay(n){return n>0?'bad':'good'}
+function card(label,value,hint,cls){return `<div class="card ${cls||''}"><div><div class="label">${label}</div><div class="value">${value}</div><div class="hint">${hint||''}</div></div><div class="accent"></div></div>`}
+function render(records){
+  const rows=(Array.isArray(records)?records:[]).filter(selected);
+  const r=rows[0];
+  const grid=document.getElementById('grid');
+  const year=document.getElementById('year');
+  if(!r){grid.innerHTML='<div class="empty">Aucune donnée pour l’année sélectionnée.</div>';year.textContent='';return}
+  year.textContent=yearOf(r)?`Année ${yearOf(r)}`:'';
+  const real=num(r.Nb_Exercices_Realises);
+  const prog=num(r.Nb_Exercices_Programmes);
+  const prev=pct(r.Pct_Departements_Prevision_Atteinte);
+  const retard=num(r.Nb_Exercices_En_Retard);
+  const nat=pct(r.Pct_Couverture_NAT),pop=pct(r.Pct_Couverture_POP),cyb=pct(r.Pct_Couverture_CYB),rup=pct(r.Pct_Couverture_RUP);
+  grid.innerHTML=
+    card('Exercices réalisés',fmt(real),'Total des exercices réalisés','info')+
+    card('Exercices programmés',fmt(prog),'Exercices encore programmés','info')+
+    card('Atteinte prévisionnelle',prev+' %','Départements atteignant l’objectif en prévision',clsPct(prev))+
+    card('Exercices en retard',fmt(retard),retard===0?'Aucun exercice programmé en retard':'Exercices programmés dont la date est dépassée',clsDelay(retard))+
+    card('Couverture NAT',nat+' %','Objectif risque naturel réalisé',clsPct(nat))+
+    card('Couverture POP',pop+' %','Objectif population / élus réalisé',clsPct(pop))+
+    card('Couverture CYBER',cyb+' %','Objectif cyber réalisé',clsPct(cyb))+
+    card('Couverture RUP',rup+' %','Objectif rupture capacitaire réalisé',clsPct(rup));
+}
+grist.ready({requiredAccess:'read table'});
+grist.onRecords(render);
+</script>
+</body>
+</html>
