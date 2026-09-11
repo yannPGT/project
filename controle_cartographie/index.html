@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Contrôles cartographie SYNAPSE</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;color:#1f2937;background:#f8fafc}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{padding:10px}
+.panel{height:100%;display:flex;align-items:center;gap:12px;padding:10px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.control{display:flex;align-items:center;gap:8px;min-width:0}
+label{font-size:12px;font-weight:700;color:#374151;white-space:nowrap}
+select{height:36px;min-width:150px;max-width:300px;padding:0 34px 0 10px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#111827;font-size:13px;outline:none}
+select:focus{border-color:#64748b;box-shadow:0 0 0 2px rgba(100,116,139,.15)}
+#annee{min-width:95px}
+#theme{min-width:245px}
+#plan{min-width:260px}
+#planWrap{display:none}
+.status{margin-left:auto;font-size:11px;color:#6b7280;white-space:nowrap}
+.status.ok{color:#166534}.status.err{color:#991b1b}
+@media(max-width:850px){body{padding:6px}.panel{align-items:stretch;flex-direction:column;justify-content:center}.control{justify-content:space-between}.control select{flex:1;max-width:none}.status{margin-left:0;text-align:right}}
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="control">
+    <label for="annee">Année</label>
+    <select id="annee"></select>
+  </div>
+  <div class="control">
+    <label for="theme">Thème cartographique</label>
+    <select id="theme"></select>
+  </div>
+  <div class="control" id="planWrap">
+    <label for="plan">Plan</label>
+    <select id="plan"></select>
+  </div>
+  <div class="status" id="status">Chargement…</div>
+</div>
+<script>
+"use strict";
+
+const TABLES={
+  years:'ANNEES',
+  themes:'THEMES_CARTOGRAPHIE',
+  plans:'PLANS_CARTOGRAPHIE',
+  choiceYear:'CHOIX_ANNEE_CARTOGRAPHIE',
+  choiceTheme:'CHOIX_THEME_CARTOGRAPHIE',
+  choicePlan:'CHOIX_PLAN_CARTOGRAPHIE'
+};
+
+const els={
+  year:document.getElementById('annee'),
+  theme:document.getElementById('theme'),
+  plan:document.getElementById('plan'),
+  planWrap:document.getElementById('planWrap'),
+  status:document.getElementById('status')
+};
+
+let state={years:null,themes:null,plans:null,choiceYear:null,choiceTheme:null,choicePlan:null};
+
+function setStatus(text,type=''){
+  els.status.textContent=text;
+  els.status.className='status'+(type?' '+type:'');
+}
+
+function rows(table){
+  if(!table||!Array.isArray(table.id))return [];
+  return table.id.map((id,i)=>{
+    const r={id};
+    for(const k of Object.keys(table)){
+      if(k!=='id'&&Array.isArray(table[k]))r[k]=table[k][i];
+    }
+    return r;
+  });
+}
+
+function refId(v){
+  if(v===null||v===undefined||v==='')return null;
+  if(typeof v==='number')return v;
+  if(typeof v==='object'&&v.rowId!==undefined)return Number(v.rowId);
+  if(Array.isArray(v)){
+    if(v.length>=2&&typeof v[1]==='number')return v[1];
+    const n=v.find(x=>typeof x==='number');
+    return n??null;
+  }
+  const n=Number(v);
+  return Number.isFinite(n)?n:null;
+}
+
+function fillSelect(select,items,labelFn){
+  select.innerHTML='';
+  for(const item of items){
+    const o=document.createElement('option');
+    o.value=String(item.id);
+    o.textContent=labelFn(item);
+    select.appendChild(o);
+  }
+}
+
+function selectedRef(choiceTable,column){
+  const r=rows(choiceTable)[0];
+  return r?refId(r[column]):null;
+}
+
+function selectedThemeRow(){
+  const id=Number(els.theme.value);
+  return rows(state.themes).find(r=>r.id===id)||null;
+}
+
+function updatePlanVisibility(){
+  const t=selectedThemeRow();
+  const isPlan=!!t&&(String(t.Code||'').trim().toUpperCase()==='PLAN'||String(t.Libelle||'').trim().toLowerCase()==='plans mis en œuvre'||String(t.Libelle||'').trim().toLowerCase()==='plans mis en oeuvre');
+  els.planWrap.style.display=isPlan?'flex':'none';
+}
+
+async function writeChoice(tableName,column,value){
+  const table=await grist.docApi.fetchTable(tableName);
+  const r=rows(table)[0];
+  if(r){
+    await grist.docApi.applyUserActions([['UpdateRecord',tableName,r.id,{[column]:Number(value)}]]);
+  }else{
+    await grist.docApi.applyUserActions([['AddRecord',tableName,null,{[column]:Number(value)}]]);
+  }
+}
+
+async function loadAll(){
+  setStatus('Chargement…');
+  const [years,themes,plans,choiceYear,choiceTheme,choicePlan]=await Promise.all([
+    grist.docApi.fetchTable(TABLES.years),
+    grist.docApi.fetchTable(TABLES.themes),
+    grist.docApi.fetchTable(TABLES.plans),
+    grist.docApi.fetchTable(TABLES.choiceYear),
+    grist.docApi.fetchTable(TABLES.choiceTheme),
+    grist.docApi.fetchTable(TABLES.choicePlan)
+  ]);
+  state={years,themes,plans,choiceYear,choiceTheme,choicePlan};
+
+  const yearRows=rows(years).sort((a,b)=>Number(a.Annee||0)-Number(b.Annee||0));
+  const themeRows=rows(themes);
+  const planRows=rows(plans).sort((a,b)=>String(a.Libelle||'').localeCompare(String(b.Libelle||''),'fr'));
+
+  fillSelect(els.year,yearRows,r=>String(r.Annee??r.id));
+  fillSelect(els.theme,themeRows,r=>String(r.Libelle??r.Code??r.id));
+  fillSelect(els.plan,planRows,r=>String(r.Libelle??r.Code??r.id));
+
+  const y=selectedRef(choiceYear,'Annee');
+  const t=selectedRef(choiceTheme,'Theme');
+  const p=selectedRef(choicePlan,'Plan');
+  if(y&&yearRows.some(r=>r.id===y))els.year.value=String(y);
+  if(t&&themeRows.some(r=>r.id===t))els.theme.value=String(t);
+  if(p&&planRows.some(r=>r.id===p))els.plan.value=String(p);
+  updatePlanVisibility();
+  setStatus('Prêt','ok');
+}
+
+async function onChange(table,column,value,after){
+  try{
+    setStatus('Mise à jour…');
+    await writeChoice(table,column,value);
+    if(after)after();
+    setStatus('Mis à jour','ok');
+  }catch(e){
+    console.error(e);
+    setStatus('Erreur de mise à jour','err');
+  }
+}
+
+els.year.addEventListener('change',()=>onChange(TABLES.choiceYear,'Annee',els.year.value));
+els.theme.addEventListener('change',()=>onChange(TABLES.choiceTheme,'Theme',els.theme.value,updatePlanVisibility));
+els.plan.addEventListener('change',()=>onChange(TABLES.choicePlan,'Plan',els.plan.value));
+
+grist.ready({requiredAccess:'full'});
+loadAll().catch(e=>{console.error(e);setStatus('Erreur de chargement','err')});
+</script>
+</body>
+</html>
