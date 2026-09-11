@@ -38,7 +38,7 @@ select:focus{border-color:#64748b;box-shadow:0 0 0 2px rgba(100,116,139,.15)}
     <label for="plan">Plan</label>
     <select id="plan"></select>
   </div>
-  <div class="status" id="status">Chargement…</div>
+  <div class="status" id="status">Initialisation…</div>
 </div>
 <script>
 "use strict";
@@ -61,6 +61,7 @@ const els={
 };
 
 let state={years:null,themes:null,plans:null,choiceYear:null,choiceTheme:null,choicePlan:null};
+let initialized=false;
 
 function setStatus(text,type=''){
   els.status.textContent=text;
@@ -117,6 +118,15 @@ function updatePlanVisibility(){
   els.planWrap.style.display=isPlan?'flex':'none';
 }
 
+async function fetchNamedTable(name){
+  setStatus('Chargement : '+name+'…');
+  try{
+    return await grist.docApi.fetchTable(name);
+  }catch(e){
+    throw new Error(name+' : '+(e&&e.message?e.message:String(e)));
+  }
+}
+
 async function writeChoice(tableName,column,value){
   const table=await grist.docApi.fetchTable(tableName);
   const r=rows(table)[0];
@@ -129,14 +139,12 @@ async function writeChoice(tableName,column,value){
 
 async function loadAll(){
   setStatus('Chargement…');
-  const [years,themes,plans,choiceYear,choiceTheme,choicePlan]=await Promise.all([
-    grist.docApi.fetchTable(TABLES.years),
-    grist.docApi.fetchTable(TABLES.themes),
-    grist.docApi.fetchTable(TABLES.plans),
-    grist.docApi.fetchTable(TABLES.choiceYear),
-    grist.docApi.fetchTable(TABLES.choiceTheme),
-    grist.docApi.fetchTable(TABLES.choicePlan)
-  ]);
+  const years=await fetchNamedTable(TABLES.years);
+  const themes=await fetchNamedTable(TABLES.themes);
+  const plans=await fetchNamedTable(TABLES.plans);
+  const choiceYear=await fetchNamedTable(TABLES.choiceYear);
+  const choiceTheme=await fetchNamedTable(TABLES.choiceTheme);
+  const choicePlan=await fetchNamedTable(TABLES.choicePlan);
   state={years,themes,plans,choiceYear,choiceTheme,choicePlan};
 
   const yearRows=rows(years).sort((a,b)=>Number(a.Annee||0)-Number(b.Annee||0));
@@ -165,7 +173,7 @@ async function onChange(table,column,value,after){
     setStatus('Mis à jour','ok');
   }catch(e){
     console.error(e);
-    setStatus('Erreur de mise à jour','err');
+    setStatus('Erreur : '+(e&&e.message?e.message:String(e)),'err');
   }
 }
 
@@ -174,7 +182,14 @@ els.theme.addEventListener('change',()=>onChange(TABLES.choiceTheme,'Theme',els.
 els.plan.addEventListener('change',()=>onChange(TABLES.choicePlan,'Plan',els.plan.value));
 
 grist.ready({requiredAccess:'full'});
-loadAll().catch(e=>{console.error(e);setStatus('Erreur de chargement','err')});
+grist.onOptions(()=>{
+  if(initialized)return;
+  initialized=true;
+  loadAll().catch(e=>{
+    console.error(e);
+    setStatus('Erreur : '+(e&&e.message?e.message:String(e)),'err');
+  });
+});
 </script>
 </body>
 </html>
