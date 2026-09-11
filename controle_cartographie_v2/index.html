@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contrôles cartographie SYNAPSE v2</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;color:#1f2937;background:#f8fafc}body{padding:10px}.panel{height:100%;display:flex;align-items:center;gap:14px;padding:10px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px}.control{display:flex;align-items:center;gap:8px}label{font-size:12px;font-weight:700;white-space:nowrap}select{height:36px;padding:0 30px 0 9px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;font-size:13px}#annee{min-width:95px}#theme{min-width:230px}#plan{min-width:280px}#planWrap{display:none}.status{margin-left:auto;font-size:11px;color:#6b7280}.ok{color:#166534}.err{color:#991b1b}@media(max-width:850px){.panel{flex-direction:column;align-items:stretch;justify-content:center}.control{justify-content:space-between}.control select{flex:1}.status{margin-left:0;text-align:right}}
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="control"><label for="annee">Année</label><select id="annee"></select></div>
+  <div class="control"><label for="theme">Thème cartographique</label><select id="theme"></select></div>
+  <div class="control" id="planWrap"><label for="plan">Plan</label><select id="plan"></select></div>
+  <div id="status" class="status">Script chargé…</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  var started=false;
+  var status=document.getElementById('status');
+  var yearSel=document.getElementById('annee');
+  var themeSel=document.getElementById('theme');
+  var planSel=document.getElementById('plan');
+  var planWrap=document.getElementById('planWrap');
+  var state={};
+
+  function setStatus(text, cls){status.textContent=text;status.className='status'+(cls?' '+cls:'');}
+  function rows(t){
+    var out=[], ids=t&&t.id;
+    if(!ids||!ids.length){return out;}
+    for(var i=0;i<ids.length;i++){
+      var r={id:ids[i]};
+      Object.keys(t).forEach(function(k){if(k!=='id'&&Array.isArray(t[k])){r[k]=t[k][i];}});
+      out.push(r);
+    }
+    return out;
+  }
+  function refId(v){
+    if(v===null||v===undefined||v===''){return null;}
+    if(typeof v==='number'){return v;}
+    if(Array.isArray(v)){
+      for(var i=0;i<v.length;i++){if(typeof v[i]==='number'){return v[i];}}
+    }
+    if(typeof v==='object'&&v.rowId!==undefined){return Number(v.rowId);}
+    var n=Number(v);return isFinite(n)?n:null;
+  }
+  function fill(sel, items, getValue, getLabel){
+    sel.innerHTML='';
+    items.forEach(function(item){var o=document.createElement('option');o.value=String(getValue(item));o.textContent=String(getLabel(item));sel.appendChild(o);});
+  }
+  function firstRow(t){var a=rows(t);return a.length?a[0]:null;}
+  function findTable(list, wanted){
+    if(list.indexOf(wanted)>=0){return wanted;}
+    var w=wanted.toLowerCase();
+    for(var i=0;i<list.length;i++){if(String(list[i]).toLowerCase()===w){return list[i];}}
+    return null;
+  }
+  function themeIsPlan(){
+    var id=Number(themeSel.value), a=rows(state.themes), r=null;
+    for(var i=0;i<a.length;i++){if(a[i].id===id){r=a[i];break;}}
+    if(!r){return false;}
+    var c=String(r.Code||'').toUpperCase();
+    var l=String(r.Libelle||'').toLowerCase();
+    return c==='PLAN'||l==='plans mis en œuvre'||l==='plans mis en oeuvre';
+  }
+  function updatePlanVisibility(){planWrap.style.display=themeIsPlan()?'flex':'none';}
+  function fetch(name){setStatus('Chargement : '+name+'…');return grist.docApi.fetchTable(name);}
+  function updateRefChoice(tableName,col,value){
+    return grist.docApi.fetchTable(tableName).then(function(t){
+      var r=firstRow(t), n=Number(value), action;
+      if(r){action=['UpdateRecord',tableName,r.id,{}];action[3][col]=n;}
+      else{action=['AddRecord',tableName,null,{}];action[3][col]=n;}
+      return grist.docApi.applyUserActions([action]);
+    });
+  }
+  function load(){
+    if(started){return;} started=true;
+    setStatus('Connexion au document…');
+    grist.docApi.listTables().then(function(list){
+      var T={
+        stats:findTable(list,'STATISTIQUES_GENERALE'),
+        themes:findTable(list,'THEMES_CARTOGRAPHIE'),
+        plans:findTable(list,'PLANS_CARTOGRAPHIE'),
+        choiceYear:findTable(list,'CHOIX_ANNEE_CARTOGRAPHIE'),
+        choiceTheme:findTable(list,'CHOIX_THEME_CARTOGRAPHIE'),
+        choicePlan:findTable(list,'CHOIX_PLAN_CARTOGRAPHIE')
+      };
+      Object.keys(T).forEach(function(k){if(!T[k]){throw new Error('Table introuvable : '+k);}});
+      state.names=T;
+      return Promise.all([fetch(T.stats),fetch(T.themes),fetch(T.plans),fetch(T.choiceYear),fetch(T.choiceTheme),fetch(T.choicePlan)]);
+    }).then(function(all){
+      state.stats=all[0];state.themes=all[1];state.plans=all[2];state.choiceYear=all[3];state.choiceTheme=all[4];state.choicePlan=all[5];
+
+      var statRows=rows(state.stats), years=[];
+      statRows.forEach(function(r){
+        var v=r.Annee;
+        if(typeof v==='number' && v>1900){years.push(String(v));}
+        else if(typeof v==='string' && /^20\d\d$/.test(v)){years.push(v);}
+      });
+      years=years.filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+      if(!years.length){
+        var cy=firstRow(state.choiceYear);
+        if(cy && typeof cy.Annee==='string' && /^20\d\d$/.test(cy.Annee)){years=[cy.Annee];}
+      }
+      fill(yearSel,years,function(y){return y;},function(y){return y;});
+
+      var themes=rows(state.themes), plans=rows(state.plans);
+      plans.sort(function(a,b){return String(a.Libelle||'').localeCompare(String(b.Libelle||''),'fr');});
+      fill(themeSel,themes,function(r){return r.id;},function(r){return r.Libelle||r.Code||r.id;});
+      fill(planSel,plans,function(r){return r.id;},function(r){return r.Libelle||r.Code||r.id;});
+
+      var ct=firstRow(state.choiceTheme), cp=firstRow(state.choicePlan);
+      if(ct){var tid=refId(ct.Theme);if(tid){themeSel.value=String(tid);}}
+      if(cp){var pid=refId(cp.Plan);if(pid){planSel.value=String(pid);}}
+      updatePlanVisibility();
+      setStatus('Prêt','ok');
+    }).catch(function(e){console.error(e);setStatus('Erreur : '+(e&&e.message?e.message:String(e)),'err');});
+  }
+
+  themeSel.addEventListener('change',function(){setStatus('Mise à jour…');updateRefChoice(state.names.choiceTheme,'Theme',themeSel.value).then(function(){updatePlanVisibility();setStatus('Mis à jour','ok');}).catch(function(e){setStatus('Erreur : '+e.message,'err');});});
+  planSel.addEventListener('change',function(){setStatus('Mise à jour…');updateRefChoice(state.names.choicePlan,'Plan',planSel.value).then(function(){setStatus('Mis à jour','ok');}).catch(function(e){setStatus('Erreur : '+e.message,'err');});});
+  yearSel.addEventListener('change',function(){setStatus('Année sélectionnée : '+yearSel.value+' — écriture non activée','err');});
+
+  try{
+    grist.ready({requiredAccess:'full'});
+    grist.onRecords(function(){load();});
+    setTimeout(load,800);
+  }catch(e){setStatus('Erreur API Grist : '+(e&&e.message?e.message:String(e)),'err');}
+})();
+</script>
+</body>
+</html>
