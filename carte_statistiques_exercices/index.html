@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carte départementale SYNAPSE</title>
+
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin="">
+  </script>
+
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #1f2937;
+      background: #f8fafc;
+    }
+
+    #app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+      width: 100%;
+    }
+
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      z-index: 1000;
+    }
+
+    #title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    #subtitle {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    #status {
+      font-size: 12px;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+
+    #mapWrap {
+      position: relative;
+      min-height: 0;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+      background: #eef2f7;
+    }
+
+    .leaflet-container {
+      font: 12px/1.4 Arial, Helvetica, sans-serif;
+    }
+
+    .tooltip-title {
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .legend {
+      background: rgba(255,255,255,0.96);
+      padding: 9px 10px;
+      border-radius: 6px;
+      box-shadow: 0 1px 5px rgba(0,0,0,.22);
+      line-height: 1.35;
+      max-width: 245px;
+    }
+
+    .legend-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: 3px 0;
+    }
+
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgba(0,0,0,.25);
+      flex: 0 0 14px;
+    }
+
+    #error {
+      display: none;
+      position: absolute;
+      inset: 16px;
+      z-index: 2000;
+      background: rgba(255,255,255,.97);
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 16px;
+      color: #991b1b;
+      overflow: auto;
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <div id="header">
+    <div>
+      <div id="title">Carte départementale</div>
+      <div id="subtitle">En attente des données Grist…</div>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <div id="mapWrap">
+    <div id="map"></div>
+    <div id="error"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const GEOJSON_URL =
+  "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-avec-outre-mer.geojson";
+
+const map = L.map("map", {
+  zoomControl: true,
+  attributionControl: true,
+  minZoom: 4
+});
+
+map.attributionControl.addAttribution(
+  'Contours : IGN / INSEE – GeoJSON gregoiredavid'
+);
+
+map.setView([46.6, 2.4], 5.3);
+
+let geojsonData = null;
+let geoLayer = null;
+let legendControl = null;
+let currentRecords = [];
+let rowByCode = new Map();
+
+const COLORS = {
+  green: "#2e7d32",
+  orange: "#ed6c02",
+  red: "#c62828",
+  grey: "#d1d5db",
+  blue1: "#dbeafe",
+  blue2: "#bfdbfe",
+  blue3: "#93c5fd",
+  blue4: "#60a5fa",
+  blue5: "#2563eb"
+};
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function normalizeCode(value) {
+  if (value === null || value === undefined) return "";
+  const s = String(value).trim().toUpperCase();
+  if (/^\d$/.test(s)) return "0" + s;
+  return s;
+}
+
+function displayYear(record) {
+  if (!record) return "";
+  const a = record.Annee;
+  if (a && typeof a === "object" && a.rowId !== undefined) {
+    return String(a.rowId);
+  }
+  if (a !== null && a !== undefined) {
+    return String(a);
+  }
+  const key = String(record.Cle_Annee_Niveau || "");
+  const m = key.match(/^(\d{4})\|/);
+  return m ? m[1] : "";
+}
+
+function isSelectedRow(record) {
+  if (!("Annee_selectionnee" in record)) return true;
+  return record.Annee_selectionnee === true || record.Annee_selectionnee === 1;
+}
+
+function detectMode(records) {
+  const statuses = records.map(r => String(r.Statut || ""));
+  const has = txt => statuses.some(s => s.includes(txt));
+
+  if (has("Objectif atteint") || has("Atteignable en prévision") || has("Objectif non atteint")) {
+    return "OBJECTIF";
+  }
+  if (has("Objectif prévisionnel atteint") || has("Objectif prévisionnel non atteint")) {
+    return "PREVISION";
+  }
+  if (has("en retard") || has("Aucun exercice en retard")) {
+    return "RETARD";
+  }
+  if (statuses.some(s => /exercice\(s\) réalisé\(s\)/i.test(s))) {
+    return "REALISES";
+  }
+  if (statuses.some(s => /exercice\(s\) programmé\(s\)/i.test(s))) {
+    return "PROGRAMMES";
+  }
+  if (statuses.some(s => ["Réalisé", "Programmé", "Non couvert", "Aucun objectif fixé"].includes(s))) {
+    return "THEMATIQUE";
+  }
+  return "GENERIC";
+}
+
+function modeLabel(mode) {
+  switch (mode) {
+    case "OBJECTIF": return "Atteinte de l’objectif";
+    case "PREVISION": return "Atteinte prévisionnelle";
+    case "REALISES": return "Nombre d’exercices réalisés";
+    case "PROGRAMMES": return "Nombre d’exercices programmés";
+    case "RETARD": return "Exercices programmés en retard";
+    case "THEMATIQUE": return "Couverture thématique";
+    default: return "Indicateur sélectionné";
+  }
+}
+
+function quantitativeBreaks(records) {
+  const values = records
+    .map(r => Number(r.Valeur))
+    .filter(v => Number.isFinite(v) && v >= 0);
+
+  const max = values.length ? Math.max(...values) : 0;
+  if (max <= 0) return [0, 1, 2, 3, 4];
+
+  return [
+    0,
+    Math.max(1, Math.ceil(max * 0.25)),
+    Math.max(1, Math.ceil(max * 0.50)),
+    Math.max(1, Math.ceil(max * 0.75)),
+    max
+  ];
+}
+
+function styleForRecord(record, mode, breaks) {
+  const base = {
+    color: "#ffffff",
+    weight: 1,
+    fillOpacity: 0.88
+  };
+
+  if (!record) {
+    return {...base, fillColor: COLORS.grey, fillOpacity: 0.5};
+  }
+
+  const status = String(record.Statut || "");
+
+  if (mode === "OBJECTIF") {
+    if (status === "Objectif atteint") return {...base, fillColor: COLORS.green};
+    if (status === "Atteignable en prévision") return {...base, fillColor: COLORS.orange};
+    if (status === "Objectif non atteint") return {...base, fillColor: COLORS.red};
+    return {...base, fillColor: COLORS.grey};
+  }
+
+  if (mode === "PREVISION") {
+    if (status === "Objectif prévisionnel atteint") return {...base, fillColor: COLORS.green};
+    if (status === "Objectif prévisionnel non atteint") return {...base, fillColor: COLORS.red};
+    return {...base, fillColor: COLORS.grey};
+  }
+
+  if (mode === "THEMATIQUE") {
+    if (status === "Réalisé") return {...base, fillColor: COLORS.green};
+    if (status === "Programmé") return {...base, fillColor: COLORS.orange};
+    if (status === "Non couvert") return {...base, fillColor: COLORS.red};
+    return {...base, fillColor: COLORS.grey};
+  }
+
+  if (mode === "RETARD") {
+    const value = Number(record.Valeur);
+    if (!Number.isFinite(value) || value === 0) return {...base, fillColor: COLORS.green};
+    return {...base, fillColor: COLORS.red};
+  }
+
+  const value = Number(record.Valeur);
+  if (!Number.isFinite(value) || value <= 0) {
+    return {...base, fillColor: COLORS.grey};
+  }
+
+  if (value <= breaks[1]) return {...base, fillColor: COLORS.blue1};
+  if (value <= breaks[2]) return {...base, fillColor: COLORS.blue2};
+  if (value <= breaks[3]) return {...base, fillColor: COLORS.blue3};
+  if (value < breaks[4]) return {...base, fillColor: COLORS.blue4};
+  return {...base, fillColor: COLORS.blue5};
+}
+
+function tooltipHtml(record, feature) {
+  const name = feature?.properties?.nom || feature?.properties?.name || "";
+  if (!record) {
+    return `<div class="tooltip-title">${escapeHtml(name)}</div>Aucune donnée pour l’année sélectionnée.`;
+  }
+
+  const raw = String(record.Infobulle || "");
+  if (raw) {
+    return raw.split("\n").map((line, i) => {
+      if (i === 0) return `<div class="tooltip-title">${escapeHtml(line)}</div>`;
+      return escapeHtml(line);
+    }).join("<br>");
+  }
+
+  return `
+    <div class="tooltip-title">${escapeHtml(record.Departement || name)}</div>
+    ${escapeHtml(record.Statut || "")}
+  `;
+}
+
+function legendRows(mode, breaks) {
+  if (mode === "OBJECTIF") {
+    return [
+      [COLORS.green, "Objectif atteint"],
+      [COLORS.orange, "Atteignable en prévision"],
+      [COLORS.red, "Objectif non atteint"],
+      [COLORS.grey, "Sans objectif / sans donnée"]
+    ];
+  }
+
+  if (mode === "PREVISION") {
+    return [
+      [COLORS.green, "Objectif prévisionnel atteint"],
+      [COLORS.red, "Objectif prévisionnel non atteint"],
+      [COLORS.grey, "Sans objectif / sans donnée"]
+    ];
+  }
+
+  if (mode === "THEMATIQUE") {
+    return [
+      [COLORS.green, "Réalisé"],
+      [COLORS.orange, "Programmé"],
+      [COLORS.red, "Non couvert"],
+      [COLORS.grey, "Aucun objectif / sans donnée"]
+    ];
+  }
+
+  if (mode === "RETARD") {
+    return [
+      [COLORS.green, "Aucun exercice en retard"],
+      [COLORS.red, "Au moins un exercice en retard"],
+      [COLORS.grey, "Sans donnée"]
+    ];
+  }
+
+  return [
+    [COLORS.grey, "0"],
+    [COLORS.blue1, `1 à ${breaks[1]}`],
+    [COLORS.blue2, `${breaks[1] + 1} à ${breaks[2]}`],
+    [COLORS.blue3, `${breaks[2] + 1} à ${breaks[3]}`],
+    [COLORS.blue4, `${breaks[3] + 1} à ${Math.max(breaks[3] + 1, breaks[4] - 1)}`],
+    [COLORS.blue5, `${breaks[4]} et +`]
+  ];
+}
+
+function updateLegend(mode, breaks) {
+  if (legendControl) {
+    map.removeControl(legendControl);
+  }
+
+  legendControl = L.control({position: "bottomright"});
+  legendControl.onAdd = function() {
+    const div = L.DomUtil.create("div", "legend");
+    const rows = legendRows(mode, breaks);
+
+    div.innerHTML =
+      `<div class="legend-title">${escapeHtml(modeLabel(mode))}</div>` +
+      rows.map(([color, label]) =>
+        `<div class="legend-row">
+          <span class="legend-swatch" style="background:${color}"></span>
+          <span>${escapeHtml(label)}</span>
+        </div>`
+      ).join("");
+
+    return div;
+  };
+  legendControl.addTo(map);
+}
+
+function redraw() {
+  if (!geojsonData) return;
+
+  const filtered = currentRecords.filter(isSelectedRow);
+  rowByCode = new Map(
+    filtered
+      .filter(r => normalizeCode(r.Code_geo))
+      .map(r => [normalizeCode(r.Code_geo), r])
+  );
+
+  const mode = detectMode(filtered);
+  const breaks = quantitativeBreaks(filtered);
+
+  if (geoLayer) {
+    geoLayer.remove();
+  }
+
+  geoLayer = L.geoJSON(geojsonData, {
+    style: feature => {
+      const code = normalizeCode(feature?.properties?.code);
+      return styleForRecord(rowByCode.get(code), mode, breaks);
+    },
+
+    onEachFeature: (feature, layer) => {
+      const code = normalizeCode(feature?.properties?.code);
+      const record = rowByCode.get(code);
+
+      layer.bindTooltip(
+        tooltipHtml(record, feature),
+        {sticky: true, direction: "auto", opacity: 0.97}
+      );
+
+      layer.on({
+        mouseover: e => {
+          e.target.setStyle({
+            weight: 2.2,
+            color: "#111827",
+            fillOpacity: 0.95
+          });
+          e.target.bringToFront();
+        },
+        mouseout: e => {
+          geoLayer.resetStyle(e.target);
+        }
+      });
+    }
+  }).addTo(map);
+
+  map.fitBounds([[41.1, -5.4], [51.3, 9.8]], {
+    padding: [10, 10]
+  });
+
+  updateLegend(mode, breaks);
+
+  const year = filtered.length ? displayYear(filtered[0]) : "";
+  document.getElementById("subtitle").textContent =
+    `${modeLabel(mode)}${year ? " — " + year : ""}`;
+
+  document.getElementById("status").textContent =
+    `${filtered.length} département(s) reçu(s)`;
+}
+
+async function loadGeoJSON() {
+  try {
+    const response = await fetch(GEOJSON_URL, {cache: "force-cache"});
+    if (!response.ok) {
+      throw new Error(`GeoJSON : HTTP ${response.status}`);
+    }
+    geojsonData = await response.json();
+    redraw();
+  } catch (err) {
+    showError(
+      "Impossible de charger le fond GeoJSON des départements.\n\n" +
+      String(err) +
+      "\n\nVérifier l'accès réseau à raw.githubusercontent.com."
+    );
+  }
+}
+
+function showError(message) {
+  const box = document.getElementById("error");
+  box.style.display = "block";
+  box.textContent = message;
+}
+
+grist.ready({
+  requiredAccess: "read table"
+});
+
+grist.onRecords(function(records) {
+  try {
+    currentRecords = Array.isArray(records) ? records : [];
+    redraw();
+  } catch (err) {
+    console.error(err);
+    showError("Erreur de traitement des données Grist :\n\n" + String(err));
+  }
+});
+
+loadGeoJSON();
+</script>
+</body>
+</html>
