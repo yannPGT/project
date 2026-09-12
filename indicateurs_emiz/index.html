@@ -8,8 +8,8 @@
 <style>
 html,body{margin:0;padding:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;background:#f8fafc;color:#1f2937;overflow:hidden}
 #app{height:100%;box-sizing:border-box;padding:10px;display:flex;flex-direction:column;gap:8px}
-.header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.title{font-size:16px;font-weight:700}.subtitle{font-size:12px;color:#6b7280;margin-top:2px}.year{font-size:12px;color:#6b7280;white-space:nowrap}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-right:8px}
+.title{font-size:16px;font-weight:700}.subtitle{font-size:12px;color:#6b7280;margin-top:2px}.year{font-size:12px;color:#6b7280;white-space:nowrap;flex:0 0 auto;min-width:78px;text-align:right;padding:2px 2px 0 8px}
 .grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;flex:1;min-height:0}
 .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 1px 2px rgba(0,0,0,.04);min-width:0}
 .label{font-size:11px;color:#6b7280;line-height:1.25}.value{font-size:24px;font-weight:700;line-height:1.1;margin-top:6px}.detail{font-size:11px;color:#6b7280;margin-top:4px;line-height:1.2}.good{color:#166534}.warn{color:#b45309}.bad{color:#b91c1c}.neutral{color:#1f2937}
@@ -33,70 +33,38 @@ let lastSignature='';
 function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
 function pct(v){return Math.round(num(v)*100)}
-function rows(t){
-  const out=[];
-  if(!t||!Array.isArray(t.id))return out;
-  for(let i=0;i<t.id.length;i++){
-    const r={id:t.id[i]};
-    for(const k of Object.keys(t)){
-      if(k!=='id'&&Array.isArray(t[k]))r[k]=t[k][i];
-    }
-    out.push(r);
-  }
-  return out;
-}
+function rows(t){const out=[];if(!t||!Array.isArray(t.id))return out;for(let i=0;i<t.id.length;i++){const r={id:t.id[i]};for(const k of Object.keys(t)){if(k!=='id'&&Array.isArray(t[k]))r[k]=t[k][i];}out.push(r);}return out;}
 function getYear(r){
   const a=r?.Annee;
   if(a&&typeof a==='object'){
     if(a.Annee!==undefined)return a.Annee;
     if(a.displayValue!==undefined)return a.displayValue;
-    if(a.rowId!==undefined)return a.rowId;
   }
-  if(a!==undefined&&a!==null)return a;
+  if(Array.isArray(a)){
+    for(const v of a){const s=String(v??'');const m=s.match(/20\d{2}/);if(m)return m[0];}
+  }
+  const direct=String(a??'');
+  const dm=direct.match(/20\d{2}/);if(dm)return dm[0];
+  for(const k of Object.keys(r||{})){
+    const s=String(r[k]??'');
+    const m=s.match(/^(20\d{2})\|/);if(m)return m[1];
+  }
   return '';
 }
 function selected(r){return r&&('Annee_selectionnee' in r)&&(r.Annee_selectionnee===true||r.Annee_selectionnee===1)}
-function card(label,value,detail,cls='neutral'){
-  return `<div class="card"><div><div class="label">${esc(label)}</div><div class="value ${cls}">${esc(value)}</div></div><div class="detail">${esc(detail||'')}</div></div>`;
-}
+function card(label,value,detail,cls='neutral'){return `<div class="card"><div><div class="label">${esc(label)}</div><div class="value ${cls}">${esc(value)}</div></div><div class="detail">${esc(detail||'')}</div></div>`;}
 function render(records){
-  const active=(records||[]).filter(selected);
-  const r=active[0]||null;
-  const grid=document.getElementById('grid');
-  const year=document.getElementById('year');
+  const active=(records||[]).filter(selected);const r=active[0]||null;const grid=document.getElementById('grid'),year=document.getElementById('year');
   if(!r){grid.innerHTML=card('Données','—','Aucune année sélectionnée','bad');year.textContent='';return;}
-  const y=getYear(r); year.textContent=y?`Année ${y}`:'';
-  const nbEmiz=num(r.Nb_EMIZ), realised=num(r.Nb_Exercices_Realises), programmed=num(r.Nb_Exercices_Programmes), late=num(r.Nb_Exercices_En_Retard);
-  const objCount=num(r.Nb_EMIZ_Objectif_Atteint), objPct=pct(r.Pct_EMIZ_Objectif_Atteint);
-  const prevCount=num(r.Nb_EMIZ_Prevision_Atteinte), prevPct=pct(r.Pct_EMIZ_Prevision_Atteinte);
-  grid.innerHTML=[
-    card('Exercices réalisés',realised,`${nbEmiz} EMIZ suivies`,'neutral'),
-    card('Exercices programmés',programmed,'Programmations restantes / à venir','neutral'),
-    card('EMIZ ayant atteint l’objectif',`${objPct} %`,`${objCount} sur ${nbEmiz}`,objPct>=80?'good':objPct>=50?'warn':'bad'),
-    card('EMIZ en prévision d’atteinte',`${prevPct} %`,`${prevCount} sur ${nbEmiz}`,prevPct>=80?'good':prevPct>=50?'warn':'bad'),
-    card('Exercices en retard',late,late===0?'Aucun exercice programmé en retard':'Programmations dépassées',late===0?'good':'bad')
-  ].join('');
+  const y=getYear(r);year.textContent=y?`Année ${y}`:'';
+  const nbEmiz=num(r.Nb_EMIZ),realised=num(r.Nb_Exercices_Realises),programmed=num(r.Nb_Exercices_Programmes),late=num(r.Nb_Exercices_En_Retard);
+  const objCount=num(r.Nb_EMIZ_Objectif_Atteint),objPct=pct(r.Pct_EMIZ_Objectif_Atteint),prevCount=num(r.Nb_EMIZ_Prevision_Atteinte),prevPct=pct(r.Pct_EMIZ_Prevision_Atteinte);
+  grid.innerHTML=[card('Exercices réalisés',realised,`${nbEmiz} EMIZ suivies`,'neutral'),card('Exercices programmés',programmed,'Programmations restantes / à venir','neutral'),card('EMIZ ayant atteint l’objectif',`${objPct} %`,`${objCount} sur ${nbEmiz}`,objPct>=80?'good':objPct>=50?'warn':'bad'),card('EMIZ en prévision d’atteinte',`${prevPct} %`,`${prevCount} sur ${nbEmiz}`,prevPct>=80?'good':prevPct>=50?'warn':'bad'),card('Exercices en retard',late,late===0?'Aucun exercice programmé en retard':'Programmations dépassées',late===0?'good':'bad')].join('');
 }
-function signature(records){
-  const r=(records||[]).find(selected);
-  if(!r)return 'none';
-  return [getYear(r),r.Nb_EMIZ,r.Nb_Exercices_Realises,r.Nb_Exercices_Programmes,r.Nb_EMIZ_Objectif_Atteint,r.Pct_EMIZ_Objectif_Atteint,r.Nb_EMIZ_Prevision_Atteinte,r.Pct_EMIZ_Prevision_Atteinte,r.Nb_Exercices_En_Retard].join('|');
-}
-function showError(e){const box=document.getElementById('error');box.style.display='block';box.textContent='Erreur widget : '+(e?.message||e);}
-function hideError(){document.getElementById('error').style.display='none';}
-async function refresh(){
-  try{
-    const table=await grist.docApi.fetchTable(TABLE);
-    const data=rows(table);
-    const sig=signature(data);
-    if(sig!==lastSignature){lastSignature=sig;render(data);}
-    hideError();
-  }catch(e){showError(e);}
-}
-grist.ready({requiredAccess:'full'});
-grist.onRecords(records=>{try{render(records||[])}catch(e){showError(e)}});
-setTimeout(refresh,300);
-setInterval(refresh,1000);
+function signature(records){const r=(records||[]).find(selected);if(!r)return'none';return[getYear(r),r.Nb_EMIZ,r.Nb_Exercices_Realises,r.Nb_Exercices_Programmes,r.Nb_EMIZ_Objectif_Atteint,r.Pct_EMIZ_Objectif_Atteint,r.Nb_EMIZ_Prevision_Atteinte,r.Pct_EMIZ_Prevision_Atteinte,r.Nb_Exercices_En_Retard].join('|');}
+function showError(e){const box=document.getElementById('error');box.style.display='block';box.textContent='Erreur widget : '+(e?.message||e)}function hideError(){document.getElementById('error').style.display='none'}
+async function refresh(){try{const table=await grist.docApi.fetchTable(TABLE);const data=rows(table);const sig=signature(data);if(sig!==lastSignature){lastSignature=sig;render(data)}hideError()}catch(e){showError(e)}}
+grist.ready({requiredAccess:'full'});grist.onRecords(records=>{try{render(records||[])}catch(e){showError(e)}});setTimeout(refresh,300);setInterval(refresh,1000);
 </script>
 </body>
 </html>
