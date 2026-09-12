@@ -28,9 +28,23 @@ html,body{margin:0;padding:0;width:100%;height:100%;font-family:Arial,Helvetica,
 </div>
 <script>
 'use strict';
+const TABLE='STATISTIQUES_GENERALE_EMIZ';
+let lastSignature='';
 function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
 function pct(v){return Math.round(num(v)*100)}
+function rows(t){
+  const out=[];
+  if(!t||!Array.isArray(t.id))return out;
+  for(let i=0;i<t.id.length;i++){
+    const r={id:t.id[i]};
+    for(const k of Object.keys(t)){
+      if(k!=='id'&&Array.isArray(t[k]))r[k]=t[k][i];
+    }
+    out.push(r);
+  }
+  return out;
+}
 function getYear(r){
   const a=r?.Annee;
   if(a&&typeof a==='object'){
@@ -41,16 +55,16 @@ function getYear(r){
   if(a!==undefined&&a!==null)return a;
   return '';
 }
-function selected(r){return !('Annee_selectionnee' in r)||r.Annee_selectionnee===true||r.Annee_selectionnee===1}
+function selected(r){return r&&('Annee_selectionnee' in r)&&(r.Annee_selectionnee===true||r.Annee_selectionnee===1)}
 function card(label,value,detail,cls='neutral'){
   return `<div class="card"><div><div class="label">${esc(label)}</div><div class="value ${cls}">${esc(value)}</div></div><div class="detail">${esc(detail||'')}</div></div>`;
 }
 function render(records){
-  const rows=(records||[]).filter(selected);
-  const r=rows[0]||records?.[0];
+  const active=(records||[]).filter(selected);
+  const r=active[0]||null;
   const grid=document.getElementById('grid');
   const year=document.getElementById('year');
-  if(!r){grid.innerHTML=card('Données','—','Aucune ligne disponible','bad');year.textContent='';return;}
+  if(!r){grid.innerHTML=card('Données','—','Aucune année sélectionnée','bad');year.textContent='';return;}
   const y=getYear(r); year.textContent=y?`Année ${y}`:'';
   const nbEmiz=num(r.Nb_EMIZ), realised=num(r.Nb_Exercices_Realises), programmed=num(r.Nb_Exercices_Programmes), late=num(r.Nb_Exercices_En_Retard);
   const objCount=num(r.Nb_EMIZ_Objectif_Atteint), objPct=pct(r.Pct_EMIZ_Objectif_Atteint);
@@ -58,14 +72,31 @@ function render(records){
   grid.innerHTML=[
     card('Exercices réalisés',realised,`${nbEmiz} EMIZ suivies`,'neutral'),
     card('Exercices programmés',programmed,'Programmations restantes / à venir','neutral'),
-    card('EMIZ ayant atteint l’objectif',`${objPct} %`,`${objCount} sur ${nbEmiz}` ,objPct>=80?'good':objPct>=50?'warn':'bad'),
-    card('EMIZ en prévision d’atteinte',`${prevPct} %`,`${prevCount} sur ${nbEmiz}` ,prevPct>=80?'good':prevPct>=50?'warn':'bad'),
+    card('EMIZ ayant atteint l’objectif',`${objPct} %`,`${objCount} sur ${nbEmiz}`,objPct>=80?'good':objPct>=50?'warn':'bad'),
+    card('EMIZ en prévision d’atteinte',`${prevPct} %`,`${prevCount} sur ${nbEmiz}`,prevPct>=80?'good':prevPct>=50?'warn':'bad'),
     card('Exercices en retard',late,late===0?'Aucun exercice programmé en retard':'Programmations dépassées',late===0?'good':'bad')
   ].join('');
 }
+function signature(records){
+  const r=(records||[]).find(selected);
+  if(!r)return 'none';
+  return [getYear(r),r.Nb_EMIZ,r.Nb_Exercices_Realises,r.Nb_Exercices_Programmes,r.Nb_EMIZ_Objectif_Atteint,r.Pct_EMIZ_Objectif_Atteint,r.Nb_EMIZ_Prevision_Atteinte,r.Pct_EMIZ_Prevision_Atteinte,r.Nb_Exercices_En_Retard].join('|');
+}
 function showError(e){const box=document.getElementById('error');box.style.display='block';box.textContent='Erreur widget : '+(e?.message||e);}
-grist.ready({requiredAccess:'read table'});
-grist.onRecords(records=>{try{document.getElementById('error').style.display='none';render(records)}catch(e){showError(e)}});
+function hideError(){document.getElementById('error').style.display='none';}
+async function refresh(){
+  try{
+    const table=await grist.docApi.fetchTable(TABLE);
+    const data=rows(table);
+    const sig=signature(data);
+    if(sig!==lastSignature){lastSignature=sig;render(data);}
+    hideError();
+  }catch(e){showError(e);}
+}
+grist.ready({requiredAccess:'full'});
+grist.onRecords(records=>{try{render(records||[])}catch(e){showError(e)}});
+setTimeout(refresh,300);
+setInterval(refresh,1000);
 </script>
 </body>
 </html>
