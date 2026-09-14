@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Financements EMIZ</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+html,body{margin:0;padding:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;background:#f8fafc;color:#1f2937;overflow:hidden}
+*{box-sizing:border-box}
+#app{height:100%;padding:10px;display:flex;flex-direction:column;gap:8px}
+.header{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.title{font-size:16px;font-weight:700}.year{font-size:14px;font-weight:700;color:#4b5563}.subtitle{font-size:12px;color:#6b7280;margin-top:-4px}
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:9px 11px;box-shadow:0 1px 2px rgba(0,0,0,.04);min-width:0}.label{font-size:10px;color:#6b7280;line-height:1.2}.value{font-size:21px;font-weight:700;line-height:1.15;margin-top:4px;white-space:nowrap}.detail{font-size:10px;color:#6b7280;margin-top:3px}.good{color:#166534}.warn{color:#b45309}.bad{color:#b91c1c}.neutral{color:#1f2937}
+.table{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column}
+.thead,.row{display:grid;grid-template-columns:minmax(90px,1.1fr) minmax(74px,.9fr) minmax(74px,.9fr) 58px minmax(115px,1.4fr);gap:8px;align-items:center}.thead{padding:7px 10px;background:#f9fafb;border-bottom:1px solid #e5e7eb;font-size:10px;font-weight:700;color:#6b7280}.tbody{overflow:auto;min-height:0}.row{padding:7px 10px;border-bottom:1px solid #f0f1f3;font-size:11px;cursor:default}.row:last-child{border-bottom:none}.row:hover{background:#f9fafb}.zone{font-weight:700;color:#111827}.num{text-align:right;white-space:nowrap}.rate{font-weight:700}.update{display:flex;justify-content:flex-end;align-items:center;gap:5px;white-space:nowrap}.badge{display:inline-flex;align-items:center;justify-content:center;min-width:23px;height:20px;padding:0 6px;border-radius:10px;font-size:10px;font-weight:700}.badge-ok{background:#ecfdf5;color:#047857}.badge-alert{background:#fff7ed;color:#c2410c}.amount-alert{font-size:10px;color:#9a3412}.empty{padding:22px 12px;text-align:center;color:#6b7280;font-size:12px}
+.tooltip{display:none;position:fixed;z-index:9999;width:340px;max-width:calc(100vw - 24px);padding:11px 12px;background:#111827;color:#fff;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.2);font-size:11px;line-height:1.45;pointer-events:none}.tt-title{font-size:12px;font-weight:700;margin-bottom:6px}.tt-section{margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,.18)}.tt-section-title{font-weight:700;margin-bottom:3px}.tt-text{white-space:pre-line;color:#e5e7eb}
+#error{display:none;background:#fff;border:1px solid #fecaca;color:#991b1b;border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;overflow:auto}
+@media(max-width:760px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.thead,.row{grid-template-columns:1fr 72px 72px 92px}.ratecol{display:none}.value{font-size:18px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header"><div class="title">Suivi financier des EMIZ</div><div class="year" id="year"></div></div>
+  <div class="subtitle">Financements demandés, reçus et qualité de mise à jour</div>
+  <div class="summary">
+    <div class="card"><div class="label">Financement demandé</div><div class="value neutral" id="totalDemande">—</div></div>
+    <div class="card"><div class="label">Financement reçu renseigné</div><div class="value neutral" id="totalRecu">—</div></div>
+    <div class="card"><div class="label">Taux reçu / demandé</div><div class="value neutral" id="tauxNational">—</div></div>
+    <div class="card"><div class="label">Demandes en attente de mise à jour</div><div class="value warn" id="totalRetards">—</div><div class="detail" id="montantRetards"></div></div>
+  </div>
+  <div class="table">
+    <div class="thead"><div>EMIZ</div><div class="num">Demandé</div><div class="num">Reçu</div><div class="num ratecol">Taux</div><div class="num">Mise à jour</div></div>
+    <div class="tbody" id="rows"></div>
+  </div>
+  <div id="error"></div>
+</div>
+<div class="tooltip" id="tooltip"></div>
+<script>
+'use strict';
+const TABLE_FIN='STATISTIQUES_FINANCEMENT_EMIZ';
+const TABLE_YEAR='CHOIX_ANNEE_CARTOGRAPHIE';
+let lastSignature='';
+let yearByRefId={};
+
+function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
+function num(v){if(v===null||v===undefined||v==='')return 0;if(typeof v==='number')return Number.isFinite(v)?v:0;const n=Number(String(v).replace(/\u00a0/g,'').replace(/\s/g,'').replace(/€/g,'').replace(',','.'));return Number.isFinite(n)?n:0}
+function rows(t){const out=[];if(!t||!Array.isArray(t.id))return out;for(let i=0;i<t.id.length;i++){const r={id:t.id[i]};for(const k of Object.keys(t)){if(k!=='id'&&Array.isArray(t[k]))r[k]=t[k][i]}out.push(r)}return out}
+function refId(v){if(v===null||v===undefined||v==='')return null;if(typeof v==='number')return v;if(Array.isArray(v)){for(const x of v)if(typeof x==='number')return x}if(typeof v==='object'&&v.rowId!==undefined)return Number(v.rowId);const n=Number(v);return Number.isFinite(n)?n:null}
+function euro(v){const n=num(v);if(Math.abs(n)>=1000000)return(n/1000000).toLocaleString('fr-FR',{maximumFractionDigits:1})+' M€';if(Math.abs(n)>=1000)return(n/1000).toLocaleString('fr-FR',{maximumFractionDigits:1})+' k€';return n.toLocaleString('fr-FR',{maximumFractionDigits:0})+' €'}
+function pct(v){let n=num(v);if(n>1.5)return n.toLocaleString('fr-FR',{maximumFractionDigits:0})+' %';return(n*100).toLocaleString('fr-FR',{maximumFractionDigits:0})+' %'}
+
+async function buildYearMap(){try{const tables=await grist.docApi.listTables();const candidates=tables.filter(n=>/ann[eé]e/i.test(String(n)));const names=candidates.length?candidates:tables;const found={};for(const name of names){try{const t=await grist.docApi.fetchTable(name);for(const r of rows(t)){for(const k of Object.keys(r)){if(k==='id')continue;const s=String(r[k]??'').trim();if(/^20\d{2}$/.test(s)&&found[r.id]===undefined)found[r.id]=s}}}catch(e){}}yearByRefId=found}catch(e){}}
+function getYearValue(v){if(v&&typeof v==='object'){if(v.Annee!==undefined&&/^20\d{2}$/.test(String(v.Annee)))return String(v.Annee);if(v.displayValue!==undefined&&/^20\d{2}$/.test(String(v.displayValue)))return String(v.displayValue)}if(Array.isArray(v)){for(const x of v){const m=String(x??'').match(/20\d{2}/);if(m)return m[0]}}const m=String(v??'').match(/20\d{2}/);if(m)return m[0];const id=refId(v);return id!==null&&yearByRefId[id]?yearByRefId[id]:''}
+function zoneName(r){if(r.Cle_Annee_Zone){const p=String(r.Cle_Annee_Zone).split('|');if(p.length>1)return p.slice(1).join('|').trim()}if(r.Cle_Annee_Zone2){const p=String(r.Cle_Annee_Zone2).split('|');if(p.length>1)return p.slice(1).join('|').trim()}const z=r.Zone;if(z&&typeof z==='object'){if(z.Zone)return String(z.Zone);if(z.displayValue)return String(z.displayValue)}if(Array.isArray(z)){for(const x of z){if(typeof x==='string'&&x.startsWith('ZD-'))return x}}const s=String(z??'');return s.startsWith('ZD-')?s:'EMIZ'}
+
+function positionTooltip(e){const tt=document.getElementById('tooltip');let x=e.clientX+14,y=e.clientY+14;const rect=tt.getBoundingClientRect(),pad=12;if(x+rect.width>window.innerWidth-pad)x=e.clientX-rect.width-14;if(y+rect.height>window.innerHeight-pad)y=e.clientY-rect.height-14;tt.style.left=Math.max(pad,x)+'px';tt.style.top=Math.max(pad,y)+'px'}
+function hideTooltip(){document.getElementById('tooltip').style.display='none'}
+function showTooltip(e,r){const tt=document.getElementById('tooltip');const dep=String(r.Detail_Sans_MAJ||r.Departements_Sans_MAJ||'').trim();const emiz=String(r.Detail_EMIZ_Sans_MAJ||'').trim();let html=`<div class="tt-title">${esc(zoneName(r))}</div><div>Demandé : <strong>${esc(euro(r.Total_Demande))}</strong><br>Reçu renseigné : <strong>${esc(euro(r.Total_Recu))}</strong><br>Taux reçu : <strong>${esc(pct(r.Taux_Recu))}</strong></div>`;
+html+=`<div class="tt-section"><div class="tt-section-title">Répartition</div><div class="tt-text">Départements : ${esc(euro(r.Demande_Departements))} demandés / ${esc(euro(r.Recu_Departements))} reçus\nEMIZ propre : ${esc(euro(r.Demande_Propre_EMIZ))} demandés / ${esc(euro(r.Recu_Propre_EMIZ))} reçus</div></div>`;
+if(num(r.Nb_Sans_MAJ)>0){html+=`<div class="tt-section"><div class="tt-section-title">Mises à jour attendues</div><div>${num(r.Nb_Sans_MAJ)} demande(s) — ${esc(euro(r.Montant_Sans_MAJ))}</div></div>`;if(dep)html+=`<div class="tt-section"><div class="tt-section-title">Départements concernés</div><div class="tt-text">${esc(dep)}</div></div>`;if(emiz)html+=`<div class="tt-section"><div class="tt-section-title">Exercices propres à l'EMIZ</div><div class="tt-text">${esc(emiz)}</div></div>`}
+tt.innerHTML=html;tt.style.display='block';positionTooltip(e)}
+
+function render(data,year){const body=document.getElementById('rows');document.getElementById('year').textContent=year?`— ${year}`:'';if(!data.length){document.getElementById('totalDemande').textContent='—';document.getElementById('totalRecu').textContent='—';document.getElementById('tauxNational').textContent='—';document.getElementById('totalRetards').textContent='—';document.getElementById('montantRetards').textContent='';body.innerHTML='<div class="empty">Aucune donnée financière disponible pour l’année sélectionnée.</div>';return}
+const td=data.reduce((s,r)=>s+num(r.Total_Demande),0),tr=data.reduce((s,r)=>s+num(r.Total_Recu),0),nr=data.reduce((s,r)=>s+num(r.Nb_Sans_MAJ),0),mr=data.reduce((s,r)=>s+num(r.Montant_Sans_MAJ),0),tx=td>0?tr/td:0;
+document.getElementById('totalDemande').textContent=euro(td);document.getElementById('totalRecu').textContent=euro(tr);document.getElementById('tauxNational').textContent=pct(tx);document.getElementById('totalRetards').textContent=nr;document.getElementById('montantRetards').textContent=nr>0?euro(mr)+' concernés':'Suivi à jour';
+data.sort((a,b)=>num(b.Nb_Sans_MAJ)-num(a.Nb_Sans_MAJ)||num(b.Montant_Sans_MAJ)-num(a.Montant_Sans_MAJ)||zoneName(a).localeCompare(zoneName(b),'fr'));body.innerHTML='';for(const r of data){const n=num(r.Nb_Sans_MAJ),div=document.createElement('div');div.className='row';div.innerHTML=`<div class="zone">${esc(zoneName(r))}</div><div class="num">${esc(euro(r.Total_Demande))}</div><div class="num">${esc(euro(r.Total_Recu))}</div><div class="num rate ratecol">${esc(pct(r.Taux_Recu))}</div><div class="update">${n>0?`<span class="badge badge-alert">${n}</span><span class="amount-alert">${esc(euro(r.Montant_Sans_MAJ))}</span>`:`<span class="badge badge-ok">✓</span>`}</div>`;div.addEventListener('mouseenter',e=>showTooltip(e,r));div.addEventListener('mousemove',positionTooltip);div.addEventListener('mouseleave',hideTooltip);body.appendChild(div)}}
+
+function showError(e){const b=document.getElementById('error');b.style.display='block';b.textContent='Erreur widget : '+(e?.message||e)}
+function hideError(){document.getElementById('error').style.display='none'}
+async function refresh(){try{const [fin,choice]=await Promise.all([grist.docApi.fetchTable(TABLE_FIN),grist.docApi.fetchTable(TABLE_YEAR)]);const finRows=rows(fin),choiceRows=rows(choice);const selectedYear=choiceRows.length?getYearValue(choiceRows[0].Annee):'';const filtered=selectedYear?finRows.filter(r=>getYearValue(r.Annee)===selectedYear):[];const sig=JSON.stringify([selectedYear,filtered.map(r=>[r.id,r.Total_Demande,r.Total_Recu,r.Taux_Recu,r.Nb_Sans_MAJ,r.Montant_Sans_MAJ,r.Detail_Sans_MAJ,r.Detail_EMIZ_Sans_MAJ])]);if(sig!==lastSignature){lastSignature=sig;render(filtered,selectedYear)}hideError()}catch(e){showError(e)}}
+async function init(){await buildYearMap();await refresh();setInterval(refresh,1000)}
+grist.ready({requiredAccess:'full'});setTimeout(init,300);
+</script>
+</body>
+</html>
