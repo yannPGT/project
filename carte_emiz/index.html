@@ -18,7 +18,7 @@ const COLORS={green:'#2e7d32',orange:'#ed6c02',red:'#c62828',grey:'#d1d5db',blue
 const ZONES={'ZD-PARIS':['Île-de-France'],'ZD-NORD':['Hauts-de-France'],'ZD-OUEST':['Bretagne','Centre-Val de Loire','Normandie','Pays de la Loire'],'ZD-EST':['Grand Est','Bourgogne-Franche-Comté'],'ZD-SUD-OUEST':['Nouvelle-Aquitaine'],'ZD-SUD-EST':['Auvergne-Rhône-Alpes'],'ZD-SUD':['Corse','Occitanie','Provence-Alpes-Côte d\'Azur'],'ZD-ANTILLES':['Guadeloupe','Martinique'],'ZD-SUD-OCEAN-INDIEN':['La Réunion','Mayotte']};
 const METRO=['ZD-PARIS','ZD-NORD','ZD-OUEST','ZD-EST','ZD-SUD-OUEST','ZD-SUD-EST','ZD-SUD'];
 const OVERSEAS_MAP=[['ZD-ANTILLES','Antilles'],['ZD-SUD-OCEAN-INDIEN','Sud Océan Indien']];
-const OVERSEAS_CARDS=[['ZD-SAINT-PIERRE-ET-MIQUELON','Saint-Pierre-et-Miquelon'],['ZD-CALEDONIE','Nouvelle-Calédonie'],['ZD-POLYNESIE','Polynésie française']];
+const OVERSEAS_CARDS=[['ZD-CALEDONIE','Nouvelle-Calédonie'],['ZD-POLYNESIE','Polynésie française']];
 const map=L.map('map',{zoomControl:true,attributionControl:true,minZoom:4});map.attributionControl.addAttribution('Contours régionaux : IGN / INSEE – GeoJSON gregoiredavid');map.setView([46.6,2.4],5.2);
 let regionData=null,zoneFeatures={},geoLayer=null,legendControl=null,currentRecords=[],rowByZone=new Map(),insetMaps=[],lastSignature='';
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
