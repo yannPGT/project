@@ -12,7 +12,7 @@ html,body{margin:0;height:100%;width:100%;overflow:hidden;font-family:Arial,Helv
 </style></head><body><div id="app"><div id="header"><div><div id="title">Carte départementale</div><div id="subtitle">En attente des données Grist…</div></div><div id="status"></div></div><div id="mapWrap"><div id="map"></div><div id="overseas"></div><div id="error"></div></div></div><script>
 'use strict';
 const GEOJSON_URL='https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-avec-outre-mer.geojson';
-const OVERSEAS=[['971','Guadeloupe','map'],['972','Martinique','map'],['973','Guyane','map'],['974','La Réunion','map'],['975','Saint-Pierre-et-Miquelon','card'],['976','Mayotte','map'],['978','Saint-Martin','card']];
+const OVERSEAS=[['971','Guadeloupe','map'],['972','Martinique','map'],['973','Guyane','map'],['974','La Réunion','map'],['975','Saint-Pierre-et-Miquelon','card'],['976','Mayotte','map'],['978','Saint-Martin','card'],['987','Polynésie française','card']];
 const MAP_OVERSEAS_CODES=new Set(OVERSEAS.filter(x=>x[2]==='map').map(x=>x[0]));
 const COLORS={green:'#2e7d32',orange:'#ed6c02',red:'#c62828',grey:'#d1d5db',blue1:'#dbeafe',blue2:'#bfdbfe',blue3:'#93c5fd',blue4:'#60a5fa',blue5:'#2563eb',real0:'#991b1b',real1:'#c62828',real2:'#ef9a9a',real3:'#f59e0b',real4:'#a5d6a7',real5:'#66bb6a',real6:'#43a047',real7:'#2e7d32',real8:'#1b5e20',plan1:'#c8e6c9',plan2:'#81c784',plan3:'#4caf50',plan4:'#2e7d32',plan5:'#1b5e20'};
 const map=L.map('map',{zoomControl:true,attributionControl:true,minZoom:4});map.attributionControl.addAttribution('Contours : IGN / INSEE – GeoJSON gregoiredavid');map.setView([46.6,2.4],5.3);
