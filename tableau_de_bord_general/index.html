@@ -99,7 +99,17 @@ function statusText(value){return norm(value)}
 function circularObjectives(kind){return S.objectives.filter(o=>yearOf(o)===S.year&&yes(cell(o,['Actif']))&&(()=>{const n=norm(cell(o,['Niveau']));return kind==='dept'?(n.includes('departement')||n.includes('collectivite')):(n.includes('emiz')||n.includes('zone'))})())}
 function objectiveCode(o){return text(cell(o,['Code_objectif','Code']))}
 function objectiveName(o){const c=objectiveCode(o),known={NAT:'Risques naturels',POP:'Population et élus',CYB:'Cyber',RUP:'Rupture capacitaire'};return known[c]||text(cell(o,['Intitule','Libelle','Libellé','Nom_objectif','Objectif']))||c}
-function mapSelectorOptions(kind,current){const base=(kind==='emiz'?EMIZ_THEMES:DEPT_THEMES).map(([v,l])=>'<option value="'+esc(v)+'" '+(v===current?'selected':'')+'>'+esc(l)+'</option>').join('');const active=circularObjectives(kind),codes=[...new Set(active.map(objectiveCode).filter(Boolean))].filter(c=>!(kind==='dept'?DEPT_THEMES:EMIZ_THEMES).some(x=>x[0]===c));const circular=codes.length?'<optgroup label="Objectifs qualitatifs de la circulaire">'+codes.map(c=>'<option value="'+esc(c)+'" '+(c===current?'selected':'')+'>'+esc(objectiveName(active.find(o=>objectiveCode(o)===c)))+'</option>').join('')+'</optgroup>':'';return base+circular}
+function mapSelectorOptions(kind,current){
+  const themes=kind==='emiz'?EMIZ_THEMES:DEPT_THEMES;
+  const option=([v,l])=>'<option value="'+esc(v)+'" '+(v===current?'selected':'')+'>'+esc(l)+'</option>';
+  const quant=themes.filter(x=>x[0]==='OBJECTIF_QUANT').map(option).join('');
+  const thematicCodes=['NAT','POP','CYB','RUP'];
+  const qual=themes.filter(x=>x[0]==='OBJECTIF_QUAL'||thematicCodes.includes(x[0])).map(option);
+  const active=circularObjectives(kind),codes=[...new Set(active.map(objectiveCode).filter(Boolean))].filter(c=>!themes.some(x=>x[0]===c));
+  codes.forEach(c=>qual.push('<option value="'+esc(c)+'" '+(c===current?'selected':'')+'>'+esc(objectiveName(active.find(o=>objectiveCode(o)===c)))+'</option>'));
+  const other=themes.filter(x=>!['OBJECTIF_QUANT','OBJECTIF_QUAL',...thematicCodes].includes(x[0])).map(option).join('');
+  return '<optgroup label="Objectifs quantitatifs">'+quant+'</optgroup><optgroup label="Objectifs qualitatifs">'+qual.join('')+'</optgroup><optgroup label="Autres indicateurs">'+other+'</optgroup>';
+}
 function mapThemeLabel(theme,kind){const list=kind==='emiz'?EMIZ_THEMES:DEPT_THEMES,found=list.find(x=>x[0]===theme);if(found)return found[1];const o=circularObjectives(kind).find(x=>objectiveCode(x)===theme);return o?objectiveName(o):theme}
 function coverageColor(value){const st=norm(value);if(!st||st.includes('aucunobjectif')||st.includes('nonrenseigne')||st.includes('nonapplicable'))return DEPT_MAP_COLORS.grey;if(st.includes('noncouvert')||st.includes('acouvrir')||st.includes('nonatteint'))return DEPT_MAP_COLORS.red;if(st.includes('realise')||st.includes('atteint')||st.includes('couvert'))return DEPT_MAP_COLORS.green;if(st.includes('programme')||st.includes('prevision')||st.includes('prevu'))return DEPT_MAP_COLORS.orange;return DEPT_MAP_COLORS.grey}
 function categoryValue(r,theme,kind='dept'){
