@@ -169,7 +169,7 @@ function deptValueLabel(v){if(!v)return'—';if(v.kind==='status')return fmt(v.n
     const layer=L.geoJSON({type:'FeatureCollection',features},{style:{color:'#fff',weight:1.1,fillOpacity:.9,fillColor:color},onEachFeature:(f,l)=>l.bindTooltip(deptTooltip(r,regionName(f)||names[code],'emiz'),{sticky:true,direction:'top',offset:[0,-6],opacity:.97})}).addTo(im);
     im.fitBounds(layer.getBounds(),{padding:[5,5],maxZoom:6});S.emizInsetMaps.push(im);
   });
-  const cards=ZONE_OUTLYING.filter(([code])=>!mapZones.has(code)).map(([code,name])=>{const r=zoneStatFor(code);if(!r)return'';const v=categoryValue(r,S.emizTheme,'emiz');return'<span class="external-card">'+esc(name)+' · '+esc(v.kind==='coverage'?text(v.value):v.kind==='status'?deptValueLabel(v):fmt(v.value))+'</span>'}).join('');
+  const excluded=new Set(['ZD-GUYANE','ZD-CALEDONIE','ZD-POLYNESIE']);const cards=ZONE_OUTLYING.filter(([code])=>!mapZones.has(code)&&!excluded.has(code)).map(([code,name])=>{const r=zoneStatFor(code);if(!r)return'';const v=categoryValue(r,S.emizTheme,'emiz');return'<span class="external-card">'+esc(name)+' · '+esc(v.kind==='coverage'?text(v.value):v.kind==='status'?deptValueLabel(v):fmt(v.value))+'</span>'}).join('');
   host.insertAdjacentHTML('beforeend',cards);
 }
 function renderGoals(){const ds=departments().map(r=>stat(r));const da=ds.filter(s=>s.real>=s.goal).length;const summary=emizSummary(),zones=emizRows().map(r=>stat(r,'emiz'));const total=number(cell(summary,['Nb_EMIZ']))||zones.length;const achieved=number(cell(summary,['Nb_EMIZ_Objectif_Atteint']))||zones.filter(s=>s.real>=s.goal).length;$('goals').innerHTML=ring('Départements et collectivités',da,ds.length)+ring('EMIZ — activité propre',achieved,total)}
