@@ -103,7 +103,7 @@ function mapSelectorOptions(kind,current){const active=circularObjectives(kind),
 function mapThemeLabel(theme,kind){if(theme==='OBJECTIF')return'Quantitatif · exercices réalisés / objectif ('+(kind==='emiz'?2:4)+')';const o=circularObjectives(kind).find(x=>objectiveCode(x)===theme);return'Qualitatif · '+(o?objectiveName(o):theme)}
 function coverageColor(value){const st=norm(value);if(!st||st.includes('aucunobjectif')||st.includes('nonrenseigne')||st.includes('nonapplicable'))return DEPT_MAP_COLORS.grey;if(st.includes('noncouvert')||st.includes('acouvrir')||st.includes('nonatteint'))return DEPT_MAP_COLORS.red;if(st.includes('realise')||st.includes('atteint')||st.includes('couvert'))return DEPT_MAP_COLORS.green;if(st.includes('programme')||st.includes('prevision')||st.includes('prevu'))return DEPT_MAP_COLORS.orange;return DEPT_MAP_COLORS.grey}
 function categoryValue(r,theme,kind='dept'){
-  if(theme==='OBJECTIF'){const s=stat(r,kind);return{kind:'status',value:s.real>=s.goal?'Atteint':s.forecast>=s.goal?'Prévu':'À atteindre',n:s.real,goal:s.goal,forecast:s.forecast}}
+  if(theme==='OBJECTIF'){const s=stat(r,kind),goal=kind==='emiz'?2:4;return{kind:'status',value:s.real>=goal?'Atteint':s.forecast>=goal?'Prévu':'À atteindre',n:s.real,goal,forecast:s.forecast}}
   if(!['PREVISION','REALISES','PROGRAMMES','RETARD','PLAN'].includes(theme))return{kind:'coverage',value:text(cell(r,['Couverture_'+theme,'Etat_Couverture_'+theme,'Statut_'+theme]))}
   if(r&&cell(r,['Statut'])!==undefined&&cell(r,['Valeur'])!==undefined)return carteCategory(r,theme);
   if(theme==='PREVISION'){const s=stat(r,kind);return{kind:'status',value:s.forecast>=s.goal?'Atteint':'Non atteint',n:s.forecast,goal:s.goal}}
