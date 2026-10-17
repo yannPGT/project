@@ -104,7 +104,7 @@ function exercisePlanLabels(r){
     const id=refId(raw);
     if(id!=null&&S.planById.has(id)){labels.push(S.planById.get(id));continue}
     const value=text(raw);
-    if(value)labels.push(...value.split(/[,;|\\n]+/).map(x=>x.trim()).filter(Boolean));
+    if(value)labels.push(...value.split(/[,;|\n]+/).map(x=>x.trim()).filter(Boolean));
   }
   return [...new Set(labels.map(x=>norm(x)).filter(Boolean))];
 }
