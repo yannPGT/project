@@ -79,9 +79,9 @@ function emizSummaryRows(){return yearRows(S.emiz)}
 function emizSummary(){return S.emiz.find(isSelected)||emizSummaryRows()[0]||S.emiz[0]||null}
 function emizMapRows(){return S.carteEmiz.filter(isSelected)}
 function isSelected(r){const v=cell(r,['Annee_selectionnee','Année_selectionnée']);return v===true||v===1||String(v).toLowerCase()==='true'}
-function isSaintPierreZone(r){return norm(zoneCode(r))==='zdsantpierreetmiquelon'||norm(territoryName(r)).includes('saintpierre')||norm(territoryName(r)).includes('miquelon')||norm(text(cell(r,['Zone']))).includes('saintpierre')||norm(text(cell(r,['Zone']))).includes('miquelon')}
-const EXCLUDED_EMIZ_ZONES=new Set(['zdcaledonie','zdguyane','zdpolynesie','zdsantpierreetmiquelon']);
-function isExcludedEmizZone(r){return EXCLUDED_EMIZ_ZONES.has(norm(zoneCode(r)))}
+function isSaintPierreZone(r){const s=norm([zoneCode(r),territoryName(r),text(cell(r,['Zone']))].join(' '));return s.includes('saintpierre')||s.includes('miquelon')}
+const EXCLUDED_EMIZ_ZONES=['caledonie','guyane','polynesie','saintpierre','miquelon'];
+function isExcludedEmizZone(r){const s=norm([zoneCode(r),territoryName(r),text(cell(r,['Zone']))].join(' '));return EXCLUDED_EMIZ_ZONES.some(term=>s.includes(term))}
 function emizRows(){const known=['ZD-PARIS','ZD-NORD','ZD-EST','ZD-SUD','ZD-SUD-EST','ZD-SUD-OUEST','ZD-OUEST','ZD-ANTILLES','ZD-SUD-OCEAN-INDIEN','ZD-GUYANE','ZD-CALEDONIE','ZD-POLYNESIE'];return currentIndicators().filter(r=>!isSaintPierreZone(r)&&!isExcludedEmizZone(r)&&(isEmiz(r)||known.some(z=>norm(zoneCode(r))===norm(z))))}
 function nationalRow(){const rs=currentIndicators();return rs.find(r=>norm(territoryType(r))==='national'||norm(territoryName(r))==='national')||null}
 function orgExercises(){return yearRows(S.bdd).filter(r=>{const p=cell(r,['Posture']);return !p||norm(text(p))==='organisateur'})}
