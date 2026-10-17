@@ -14,9 +14,23 @@ La documentation Albert indique que les clés sont créées depuis le Playground
    node .\albert_essai_local.mjs .\resume.json
    Remove-Item Env:ALBERT_API_KEY
    ```
-3. Le script appelle Albert depuis votre poste et affiche seulement un **brouillon** dans le terminal. Si besoin, définir `ALBERT_MODEL` dans l'environnement ; par défaut `openweight-small` selon le guide. Comparer chaque nombre et chaque affirmation à la synthèse Grist. Ne pas publier le texte automatiquement.
+3. Le script exige désormais un JSON de version 2 (recréer le résumé depuis le widget) et appelle Albert depuis votre poste. Il affiche seulement un **brouillon** dans le terminal. Si besoin, définir `ALBERT_MODEL` dans l'environnement ; par défaut `openweight-small` selon le guide. Comparer chaque nombre et chaque affirmation à la synthèse Grist. Ne pas publier le texte automatiquement.
 
 L'usage d'une clé temporaire rend cet essai réversible ; **il ne rend pas acceptable l'insertion de la clé dans le JavaScript du widget**. Pour une utilisation collective, passer par le service authentifié ci-dessous.
+
+## Retour sur le premier essai de rédaction (2025)
+
+Le texte testé sur le Playground a correctement repris plusieurs totaux, mais il confondait 75/104 territoires atteignant le seuil quantitatif avec un taux de réalisation des objectifs qualitatifs. Il interprétait aussi 1 500 € enregistrés comme reçus face à 134 288 € demandés comme un déficit prouvé, alors que la table financière ne permet pas d'établir cette conclusion. La mention « FR (France) » correspond à un dispositif FR-Alert mal identifié. Une date renseignée sur les exercices comptés ne garantit pas que l'ensemble du fichier soit complet.
+
+Le JSON de version 2 précise ces dénominateurs et limites. Le script d'essai interdit les qualificatifs « sous-dotation », « signal d'alarme » et les causes ou recommandations sans source. La vérification humaine reste nécessaire même après ces consignes.
+
+## Consigne pour un nouvel essai dans le Playground
+
+Créer d'abord un nouveau JSON de version 2 dans le widget. Dans le Playground, fournir cette instruction séparément du JSON :
+
+> Rédige une proposition de synthèse annuelle en français, limitée aux chiffres et aux libellés du JSON. Distingue les territoires atteignant le seuil quantitatif des objectifs qualitatifs de la circulaire : les premiers ne mesurent pas la réalisation des seconds. FR-Alert désigne un dispositif d'alerte à la population. Les montants demandés et reçus sont seulement des sommes renseignées dans une table : ne déduis ni déficit, ni taux de financement, ni effet sur les exercices futurs. Ne déduis aucune cause des pics mensuels ni aucune appréciation sur la capacité opérationnelle. Une année échue et l'absence de dates manquantes ne prouvent pas l'exhaustivité des données. Qualifie chaque pourcentage avec son dénominateur, n'invente aucun fait et conclue par les limites de source. Rends un brouillon structuré à valider par un agent.
+
+Le texte généré doit être vérifié ligne à ligne avant intégration.
 
 ## Architecture
 
@@ -25,11 +39,11 @@ Navigateur Grist → widget hébergé sur GitHub Pages → service institutionne
 ## Contrat du service
 
 - Route envisagée : `POST /api/syntheses-annuelles/rediger` sur un domaine institutionnel HTTPS.
-- Entrée : JSON produit par `annualAiPayload(data)` dans `index.html`. Champs : `version=1`, `year`, `generatedAt`, `provisional`, `method`, `exercises`, `previousYear`, `objectives`, `goalAttainment`, `risks`, `monthly`, `missingDates`, `tools`, `finances`. Il s'agit d'agrégats et d'intitulés d'objectifs, sans enregistrement individuel.
+- Entrée : JSON produit par `annualAiPayload(data)` dans `index.html`. Champs : `version=2`, `year`, `generatedAt`, `currentYearIncomplete`, `dataQuality`, `method`, `exercises`, `previousYear`, `qualitativeObjectives`, `quantitativeTerritoryTargets`, `riskCategoryCounts`, `monthlyRealizedCounts`, `recordedToolFlags`, `financeObservations`. Il s'agit d'agrégats et d'intitulés d'objectifs, sans enregistrement individuel.
 - Sortie : `{"year":"2025","draft":"Texte français à relire…"}`. Texte brut, 1 à 12 000 caractères. En cas d'erreur, code HTTP non 2xx ; ne renvoyer aucun secret ni détail interne.
 - Le serveur valide le schéma et la taille de la requête, contrôle année et valeurs, refuse les champs inattendus, impose un budget et un quota, et journalise uniquement les métadonnées nécessaires, sans contenu sensible.
 - Le serveur choisit le modèle disponible avec `GET /v1/models` lors de sa configuration (type `text-generation`), puis appelle Albert avec `Authorization: Bearer <clé stockée dans un coffre de secrets serveur>`, `messages` et `model`.
-- Instruction serveur : rédaction factuelle, respect des chiffres et des années, qualifier 2026 de provisoire, distinguer hypothèse et fait, ne pas déduire de cause ou de recommandation sans source ; signaler les champs absents ; retourner du texte brut. Prévoir un contrôle automatique des chiffres cités avant restitution.
+- Instruction serveur : reprendre la formulation détaillée du script d'essai local. Le nombre de territoires ayant atteint un seuil quantitatif n'est pas un pourcentage d'objectifs qualitatifs. Les montants saisis ne prouvent ni déficit ni taux de financement. Les dispositifs déclarés ne prouvent pas la complétude de la saisie. Rédiger de façon descriptive, sans causalité ou jugement non étayé. Prévoir un contrôle automatique des chiffres cités avant restitution.
 - Autoriser uniquement les personnes habilitées (SSO institutionnel ou délégation limitée documentée). Une origine CORS autorisée n'authentifie pas l'appelant. Si session par cookie, contrôler CSRF, `Origin` et compatibilité des navigateurs avec le widget intégré dans l'iframe Grist ; sinon retenir une authentification courte et spécifique au service. Un proxy public sans contrôle d'identité est exclu.
 - Confirmer préalablement avec les responsables SSI et métier que les agrégats et intitulés transmis sont admissibles. Ne pas transmettre d'informations classifiées. Minimiser davantage les intitulés si le périmètre de données le demande.
 
