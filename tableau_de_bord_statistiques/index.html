@@ -111,6 +111,12 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 .report-toolbar label{font-size:12px;font-weight:700;display:grid;gap:5px}
 .report-toolbar select{min-width:96px;background:#fff;padding:7px;border:1px solid #b6c2d2}
 .report-toolbar button{border-color:#000091}
+.ai-panel{background:#f5f7ff;border:1px solid #c5cff6;border-left:4px solid #000091;border-radius:6px;padding:16px;margin:12px 0 22px}
+.ai-panel-head{display:flex;align-items:start;justify-content:space-between;gap:16px}.ai-panel-head p{margin:4px 0 10px;color:#485467;font-size:13px}
+.ai-badge{font-size:11px;font-weight:700;color:#000091;border:1px solid #bcc8fa;border-radius:20px;padding:4px 9px;white-space:nowrap}
+.ai-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}.ai-actions button{border:1px solid #000091;background:#fff;color:#000091;padding:8px 12px;border-radius:4px;font-weight:700;cursor:pointer}.ai-actions button:disabled{opacity:.52;cursor:not-allowed}
+#aiStatus{font-size:12px;color:#485467}.ai-panel details{font-size:12px}.ai-panel pre{max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#fff;border:1px solid #d8dfe9;padding:12px}
+#aiEditor{margin-top:12px}#aiEditor label{font-weight:700;font-size:13px}#aiDraft{display:block;width:100%;box-sizing:border-box;resize:vertical;margin-top:6px;padding:12px;line-height:1.5;font:inherit;border:1px solid #8898ba;border-radius:4px;background:#fff}
 .annual-report-sheet{background:#fff;border:1px solid #dce3ec;border-radius:6px;padding:24px;max-width:1170px;margin:auto}
 .annual-report-head{border-bottom:3px solid #000091;padding:0 0 16px;margin:0 0 20px}
 .annual-report-head .eyebrow{color:#000091;text-transform:uppercase;font-size:12px;font-weight:800;letter-spacing:.06em}
@@ -137,7 +143,7 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 @media(max-width:900px){.annual-report-kpis{grid-template-columns:repeat(2,1fr)}.report-grid{grid-template-columns:1fr}}
 @media(max-width:580px){.annual-report-sheet{padding:14px}.annual-report-kpis{grid-template-columns:repeat(2,1fr)}.report-toolbar{align-items:stretch;flex-wrap:wrap}}
 @media print{
- body{background:#fff!important}.page{max-width:none;padding:0}.masthead,.stat-nav,#error,.compare-key,.compare-subnav,.detail-heading,.report-toolbar,#compareStatus,footer{display:none!important}
+ body{background:#fff!important}.page{max-width:none;padding:0}.masthead,.stat-nav,#error,.compare-key,.compare-subnav,.detail-heading,.report-toolbar,.ai-panel,#compareStatus,footer{display:none!important}
  .view{display:none!important}#viewComparison{display:block!important}#compareContent{display:none!important}
  #annualReport{display:block!important}.annual-report-sheet{max-width:none;border:0;padding:0}
  .annual-report-section{break-inside:avoid-page}.report-map{height:210px}
@@ -220,6 +226,12 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
  <div id="annualReport" hidden>
    <div class="report-toolbar"><label>Année de la synthèse <select id="reportYear"></select></label>
      <button type="button" id="printReport">Imprimer / enregistrer en PDF</button></div>
+   <div class="ai-panel" aria-label="Aide à la rédaction de la synthèse">
+     <div class="ai-panel-head"><div><strong>Aide à la rédaction</strong><p>Une proposition rédigée est préparée sur demande, puis relue avant d’intégrer la synthèse.</p></div><span class="ai-badge">Option en préparation</span></div>
+     <div class="ai-actions"><button type="button" id="aiPrepare">Préparer les données à transmettre</button><button type="button" id="aiGenerate" disabled>Demander une rédaction à Albert</button><button type="button" id="aiManual">Saisir un brouillon manuel</button><span id="aiStatus" role="status" aria-live="polite">Aucune donnée transmise. Le raccordement sécurisé reste à configurer.</span></div>
+     <details id="aiPayloadDetail"><summary>Voir les données préparées pour l’IA</summary><pre id="aiPayloadPreview"></pre></details>
+     <div id="aiEditor" hidden><label for="aiDraft">Brouillon à vérifier et compléter</label><textarea id="aiDraft" rows="8" maxlength="12000" spellcheck="true"></textarea><div class="ai-actions"><button type="button" id="aiApply">Intégrer le texte relu à la synthèse</button><button type="button" id="aiRemove">Retirer le texte de la synthèse</button></div><p class="detail-note">Cette saisie reste temporaire dans le navigateur et n’est pas enregistrée dans Grist.</p></div>
+   </div>
    <div id="annualReportBody"></div>
  </div>
 </section>
@@ -519,7 +531,7 @@ async function fetchTables(){
  for(const [key,wanted] of Object.entries(TABLES)){const found=available.find(n=>String(n).toLowerCase()===wanted.toLowerCase());if(!found)throw new Error('Table absente du classeur : '+wanted);actual[key]=found}
  const data={},entries=Object.entries(actual);
  for(let i=0;i<entries.length;i++){const [key,name]=entries[i];$('updated').textContent='Lecture Grist : '+name+' ('+(i+1)+'/'+entries.length+')';data[TABLES[key]]=rows(await timed(grist.docApi.fetchTable(name),'table '+name))}
- S.yearMap=new Map(data[TABLES.years].map(r=>[r.id,String(cell(r,['Annee','Année']))]));S.admins=data[TABLES.admins];S.adminById=new Map(S.admins.map(r=>[r.id,r]));S.ind=data[TABLES.ind];S.emiz=data[TABLES.emiz];S.carteEmiz=data[TABLES.carteEmiz];S.bdd=data[TABLES.bdd];S.finance=data[TABLES.finance];S.objectives=data[TABLES.objectives];S.deptThemes=data[TABLES.deptThemes];S.emizThemes=data[TABLES.emizThemes];S.plansCatalog=data[TABLES.plans];S.choiceYear=data[TABLES.choiceYear];S.planCountCache=null;S.exerciseCountCache=null;comparisonYearCache.clear();reportDataCache.clear();comparisonRendered=false;fillSelectors();renderAll();const summaryRow=emizSummary();const emizMap=emizRows();const mapZones=new Set(emizMap.map(zoneCode).filter(Boolean));$('updated').textContent='Grist · '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+' · EMIZ objectif '+(summaryRow?'ligne trouvée':'absent')+' · carte '+mapZones.size+' zone(s) / '+emizMap.length+' ligne(s)';$('updated').title='STATISTIQUES_GENERALE_EMIZ : '+S.emiz.length+' ligne(s), '+S.emiz.filter(isSelected).length+' sélectionnée(s). INDICATEURS_NIVEAUX_V2 EMIZ : '+emizRows().length+' ligne(s), '+new Set(emizRows().map(zoneCode).filter(Boolean)).size+' zone(s). CARTE_EMIZ : '+S.carteEmiz.length+' ligne(s) chargée(s) pour diagnostic.';$('updated').classList.remove('error');$('error').style.display='none'
+ S.yearMap=new Map(data[TABLES.years].map(r=>[r.id,String(cell(r,['Annee','Année']))]));S.admins=data[TABLES.admins];S.adminById=new Map(S.admins.map(r=>[r.id,r]));S.ind=data[TABLES.ind];S.emiz=data[TABLES.emiz];S.carteEmiz=data[TABLES.carteEmiz];S.bdd=data[TABLES.bdd];S.finance=data[TABLES.finance];S.objectives=data[TABLES.objectives];S.deptThemes=data[TABLES.deptThemes];S.emizThemes=data[TABLES.emizThemes];S.plansCatalog=data[TABLES.plans];S.choiceYear=data[TABLES.choiceYear];S.planCountCache=null;S.exerciseCountCache=null;comparisonYearCache.clear();reportDataCache.clear();approvedAnnualTexts.clear();resetAnnualAiEditor();comparisonRendered=false;fillSelectors();renderAll();const summaryRow=emizSummary();const emizMap=emizRows();const mapZones=new Set(emizMap.map(zoneCode).filter(Boolean));$('updated').textContent='Grist · '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+' · EMIZ objectif '+(summaryRow?'ligne trouvée':'absent')+' · carte '+mapZones.size+' zone(s) / '+emizMap.length+' ligne(s)';$('updated').title='STATISTIQUES_GENERALE_EMIZ : '+S.emiz.length+' ligne(s), '+S.emiz.filter(isSelected).length+' sélectionnée(s). INDICATEURS_NIVEAUX_V2 EMIZ : '+emizRows().length+' ligne(s), '+new Set(emizRows().map(zoneCode).filter(Boolean)).size+' zone(s). CARTE_EMIZ : '+S.carteEmiz.length+' ligne(s) chargée(s) pour diagnostic.';$('updated').classList.remove('error');$('error').style.display='none'
 }
 async function loadGeo(url,key){try{const r=await fetch(url);if(!r.ok)throw Error('Réponse HTTP '+r.status);const j=await r.json();if(key==='dept'){S.deptGeo=j;S.deptMap=L.map('deptMap',{zoomControl:false,attributionControl:true,scrollWheelZoom:false}).setView([46.6,2.4],5);S.deptMap.attributionControl.addAttribution('Contours : IGN / INSEE · GeoJSON gregoiredavid');drawDeptMap()}else{S.emizGeo=j;S.emizMap=L.map('emizMap',{zoomControl:false,attributionControl:true,scrollWheelZoom:false}).setView([46.6,2.4],5);S.emizMap.attributionControl.addAttribution('Contours : IGN / INSEE · GeoJSON gregoiredavid');drawEmizMap()}window.renderAnnualMaps?.()}catch(e){$(key==='dept'?'deptMap':'emizMap').innerHTML='<div class="empty">Carte indisponible : '+esc(e.message)+'</div>'}}
 async function syncYearChoice(year){
@@ -685,6 +697,77 @@ function compareQualitative(data){
 
 const REPORT_MONTHS=['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
 let reportSelectedYear='2025', reportMaps={dept:null,zone:null}, reportDataset=null, comparePresentation='comparison';
+// The protected backend URL is supplied only after deployment. The Albert API key must remain on that server.
+const ANNUAL_AI_SERVICE_URL='';
+const approvedAnnualTexts=new Map();
+let preparedAnnualYear='',preparedAnnualPayload=null,annualDraftYear='';
+function annualAiPayload(data){
+ const s=data.summary,objectives=S.objectives.filter(o=>yearOf(o)===data.year&&yes(cell(o,['Actif'])));
+ return {version:1,year:data.year,generatedAt:new Date().toISOString(),
+  provisional:Number(data.year)>=new Date().getFullYear(),
+  method:'Exercices réalisés ; Direction/Vigilance organisateurs avant 2026 ; Appui exclu.',
+  exercises:{department:{realized:s.dept.real,planned:s.dept.planned,cancelled:s.dept.cancel},
+   zone:{realized:s.zone.real,planned:s.zone.planned,cancelled:s.zone.cancel}},
+  previousYear:Number(data.year)>2024?(()=>{const p=annualReportData(String(Number(data.year)-1)).summary;
+   return {year:String(Number(data.year)-1),departmentRealized:p.dept.real,zoneRealized:p.zone.real}})():null,
+  objectives:objectives.map(o=>({level:text(cell(o,['Niveau'])),code:objectiveCode(o),title:objectiveName(o)})).slice(0,100),
+  goalAttainment:{departments:s.departmentGoals?{achieved:s.departmentGoals.reached,total:s.departmentGoals.total}:null,
+   zones:s.zoneGoals?{achieved:s.zoneGoals.reached,total:s.zoneGoals.total}:null},
+  risks:{department:data.deptRisk.slice(0,12).map(([name,count])=>({name,count})),
+   zone:data.zoneRisk.slice(0,12).map(([name,count])=>({name,count}))},
+  monthly:data.months,missingDates:data.datesMissing,tools:data.tools,
+  finances:data.finance.available?{requested:data.finance.asked,received:data.finance.received}:null};
+}
+function resetAnnualAiEditor(){
+ preparedAnnualYear='';preparedAnnualPayload=null;annualDraftYear='';
+ $('aiPayloadPreview').textContent='';$('aiPayloadDetail').open=false;
+ $('aiEditor').hidden=true;$('aiDraft').value='';$('aiGenerate').disabled=true;
+ $('aiStatus').textContent='Aucune donnée transmise. Le raccordement sécurisé reste à configurer.';
+}
+function prepareAnnualAi(){
+ if(!reportDataset||reportDataset.year!==reportSelectedYear)return;
+ preparedAnnualPayload=annualAiPayload(reportDataset);preparedAnnualYear=reportSelectedYear;
+ $('aiPayloadPreview').textContent=JSON.stringify(preparedAnnualPayload,null,2);
+ $('aiPayloadDetail').open=true;$('aiGenerate').disabled=!ANNUAL_AI_SERVICE_URL;
+ $('aiStatus').textContent=ANNUAL_AI_SERVICE_URL
+  ?'Données préparées. Aucun envoi avant votre clic sur « Demander une rédaction à Albert ».'
+  :'Données préparées localement. Service Albert non configuré : aucun envoi effectué.';
+}
+async function generateAnnualAi(){
+ if(!ANNUAL_AI_SERVICE_URL||!preparedAnnualPayload||preparedAnnualYear!==reportSelectedYear)return;
+ const button=$('aiGenerate');button.disabled=true;$('aiStatus').textContent='Rédaction en cours…';
+ try{
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),45000);
+  let response;
+  try{response=await fetch(ANNUAL_AI_SERVICE_URL,{
+   method:'POST',credentials:'include',headers:{'Content-Type':'application/json','Accept':'application/json'},
+   body:JSON.stringify(preparedAnnualPayload),signal:controller.signal
+  })}finally{clearTimeout(timer)}
+  if(!response.ok)throw Error('Service indisponible (HTTP '+response.status+').');
+  const result=await response.json();
+  if(result.year!==reportSelectedYear||typeof result.draft!=='string'||!result.draft.trim()||result.draft.length>12000)
+   throw Error('Réponse du service invalide.');
+  $('aiDraft').value=result.draft.trim();$('aiEditor').hidden=false;annualDraftYear=reportSelectedYear;
+  $('aiStatus').textContent='Brouillon reçu. Vérifiez les affirmations avant de l’intégrer.';
+ }catch(e){$('aiStatus').textContent='Rédaction impossible : '+(e.name==='AbortError'?'délai dépassé':e.message)}
+ finally{button.disabled=!ANNUAL_AI_SERVICE_URL||preparedAnnualYear!==reportSelectedYear}
+}
+function startManualAnnualDraft(){
+ if(!reportDataset||reportDataset.year!==reportSelectedYear)return;
+ annualDraftYear=reportSelectedYear;$('aiDraft').value=approvedAnnualTexts.get(reportSelectedYear)||'';
+ $('aiEditor').hidden=false;$('aiStatus').textContent='Brouillon manuel ouvert. Relisez-le avant son intégration.';
+}
+function applyAnnualAi(){
+ if(annualDraftYear!==reportSelectedYear)return;
+ const draft=$('aiDraft').value.trim();if(!draft){$('aiStatus').textContent='Le brouillon est vide.';return}
+ approvedAnnualTexts.set(reportSelectedYear,draft);renderAnnualReport();
+ $('aiStatus').textContent='Texte relu ajouté à la synthèse de '+reportSelectedYear+'.';
+}
+function removeAnnualAi(){
+ approvedAnnualTexts.delete(reportSelectedYear);renderAnnualReport();
+ $('aiStatus').textContent='Texte retiré de la synthèse.';
+}
+
 function reportDateMonth(value){
  if(typeof value==='number'){const d=new Date(value<1e11?value*1000:value);return Number.isNaN(d.getTime())?-1:d.getUTCMonth()}
  const t=text(value);const french=t.match(/^\s*(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
@@ -774,6 +857,8 @@ function renderAnnualReport(){
  const terrTable=items=>'<div class="table-wrap"><table class="table"><thead><tr><th>Territoire</th><th class="num">Exercices réalisés</th></tr></thead><tbody>'+topList(items)+'</tbody></table></div>';
  const narrative=annualNarrative(data,prior);
  const partial=Number(year)>=new Date().getFullYear();
+ const reviewedText=approvedAnnualTexts.get(year);
+ const reviewedSection=reviewedText?'<section class="annual-report-section"><h4>Analyse complémentaire validée</h4><div class="report-analysis">'+esc(reviewedText).replace(/\n/g,'<br>')+'</div></section>':'';
  const html='<article class="annual-report-sheet" aria-label="Synthèse annuelle '+esc(year)+'">'+
   '<div class="annual-report-head"><span class="eyebrow">DGSCGC · BPAC · Exercices et RETEX</span><h3>Synthèse des exercices '+esc(year)+'</h3>'+
   '<p>Restitution générée depuis les données du classeur Grist · '+(partial?'année en cours, bilan provisoire':'année échue')+'</p></div>'+
@@ -790,7 +875,8 @@ function renderAnnualReport(){
   '<section class="annual-report-section"><h4>Analyse de l’activité</h4><div class="report-analysis">'+narrative+'</div><h5>Répartition mensuelle</h5>'+annualMonthlyChart(data)+
    (data.focus?'<p>Exercices mentionnant un risque ou un plan nucléaire ou radiologique : <strong>'+fmt(data.focus)+'</strong>. Ce repérage dépend des intitulés saisis dans SYNAPSE.</p>':'')+'</section>'+
   '<section class="annual-report-section"><h4>Financement des exercices</h4>'+finance+'<p class="detail-note">Les montants demandés et reçus sont issus de STATISTIQUES_FINANCEMENT_EMIZ ; ils ne représentent pas l’enveloppe budgétaire nationale.</p></section>'+
-  '<section class="annual-report-section report-note report-alert"><strong>Méthode et limites.</strong> Statistiques recalculées depuis le Grist actuel : elles peuvent différer de la synthèse papier fournie, fondée sur une extraction du 1er janvier 2026. Direction et Vigilance sont traitées comme organisateurs pour les anciennes années ; Appui est exclu. Les pourcentages et évolutions de l’année en cours sont provisoires. Les commentaires ci-dessus décrivent les données sans en déduire de cause.</section>'+
+  reviewedSection+
+  '<section class="annual-report-section report-note report-alert"><strong>Méthode et limites.</strong> Statistiques recalculées depuis le Grist actuel : elles peuvent différer de la synthèse papier fournie, fondée sur une extraction du 1er janvier 2026. Direction et Vigilance sont traitées comme organisateurs pour les anciennes années ; Appui est exclu. Les pourcentages et évolutions de l’année en cours sont provisoires. Les constats automatiques décrivent les données sans en déduire de cause. Toute analyse complémentaire doit être vérifiée avant diffusion.</section>'+
   '</article>';
  for(const kind of ['dept','zone']){reportMaps[kind]?.remove();reportMaps[kind]=null}
  $('annualReportBody').innerHTML=html;
@@ -1034,8 +1120,13 @@ async function saveZoneValidation(button,previous,key){
 }
 $('compareMode').addEventListener('click',()=>setComparePresentation('comparison'));
 $('reportMode').addEventListener('click',()=>setComparePresentation('report'));
-$('reportYear').addEventListener('change',()=>{reportSelectedYear=$('reportYear').value;renderAnnualReport()});
+$('reportYear').addEventListener('change',()=>{reportSelectedYear=$('reportYear').value;resetAnnualAiEditor();renderAnnualReport()});
 $('printReport').addEventListener('click',()=>window.print());
+$('aiPrepare').addEventListener('click',prepareAnnualAi);
+$('aiGenerate').addEventListener('click',generateAnnualAi);
+$('aiManual').addEventListener('click',startManualAnnualDraft);
+$('aiApply').addEventListener('click',applyAnnualAi);
+$('aiRemove').addEventListener('click',removeAnnualAi);
 document.querySelectorAll('.stat-nav [data-view]').forEach(button=>button.addEventListener('click',()=>showUnifiedPage(button.dataset.view)));
 $('detailDepartment').addEventListener('change',()=>{detailDepartmentKey=$('detailDepartment').value;renderUnifiedDetails()});
 $('detailZone').addEventListener('change',()=>{detailZoneCode=$('detailZone').value;$('detailZoneFeedback').textContent='';renderUnifiedDetails()});
