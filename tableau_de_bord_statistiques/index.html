@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Statistiques des exercices — Exercices RETEX</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+:root{--blue:#000091;--red:#e1000f;--green:#18753c;--amber:#a66a00;--teal:#187b91;--ink:#161616;--muted:#666;--line:#d8d8d8;--bg:#f6f6f6;--soft:#eef2f6;--shadow:0 2px 8px #00000012}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font:13px/1.45 Arial,Helvetica,sans-serif;color:var(--ink);background:var(--bg)}button,select{font:inherit}.page{max-width:1700px;margin:auto;padding:10px 14px 22px}.masthead{position:relative;background:#fff;border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;padding:14px 16px 12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:var(--shadow)}.masthead:before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#000091 0 33.33%,#fff 33.33% 66.66%,#e1000f 66.66%)}.brand{flex:1;min-width:270px}.institution{display:flex;align-items:center;gap:10px;margin:2px 0 7px}.institution-mark{width:4px;height:33px;background:var(--blue);border-radius:2px}.institution-text{font-size:9px;line-height:1.35;letter-spacing:.06em;font-weight:700;color:#3a3a3a;text-transform:uppercase}.institution-text span{display:block;color:var(--blue);font-size:10px;letter-spacing:.02em;margin-top:2px}.title{font-size:18px;font-weight:700;line-height:1.25}.subtitle{font-size:10px;color:var(--muted);margin-top:2px}.selectors{display:flex;align-items:end;gap:9px;flex-wrap:wrap}.field{display:grid;gap:3px;font-size:10px;font-weight:700;color:#4b5563}.field select{min-width:100px;background:#fff;border:1px solid #929292;border-radius:3px;padding:7px 24px 7px 8px;color:var(--ink)}.demo{background:#fff1ce;color:#76500b;border-radius:3px;padding:5px 8px;font-size:9px;font-weight:700;white-space:nowrap}.status{font-size:10px;color:var(--muted);white-space:nowrap}.status.error{color:#a12622}.overview-title{display:flex;justify-content:space-between;align-items:baseline;margin:11px 2px 7px}.overview-title h2,.section-title{font-size:14px;color:var(--blue);margin:0}.overview-title span{font-size:10px;color:var(--muted)}.overview{display:grid;grid-template-columns:minmax(215px,.58fr) minmax(0,2.42fr);gap:9px}.panel{background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);min-width:0}.goal-panel{padding:10px}.panel-title{font-size:11px;font-weight:700;color:var(--blue);margin:0 0 7px}.goal-row{display:grid;grid-template-columns:1fr;gap:8px}.goal{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:7px;border:1px solid #e5ebef;background:#fbfcfd;border-radius:6px;padding:7px}.ring{--p:0;width:54px;height:54px;border-radius:50%;display:grid;place-items:center;position:relative;background:conic-gradient(var(--green) calc(var(--p)*1%),#e7ebef 0)}.ring:after{content:"";position:absolute;inset:6px;background:#fff;border-radius:50%}.ring strong{position:relative;z-index:1;color:var(--blue);font-size:14px}.goal-label{font-size:10px;font-weight:700;color:var(--blue)}.goal-note{font-size:9px;color:var(--muted)}.maps{display:grid;grid-template-columns:1fr 1fr;gap:9px}.map-panel{overflow:hidden;display:flex;flex-direction:column}.map-head{padding:8px 9px 6px;display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap}.map-name{font-size:11px;font-weight:700;color:var(--blue);width:100%}.map-controls{display:flex;gap:7px;align-items:end;flex-wrap:wrap}.map-controls .field{font-size:9px}.map-controls select{font-size:10px;padding:5px 20px 5px 6px;min-width:130px;max-width:200px}.map-canvas{height:250px;min-height:220px;background:#eef2f6}.map-foot{display:flex;justify-content:space-between;gap:8px;padding:5px 9px 7px;font-size:9px;color:var(--muted)}.legend{display:flex;gap:8px;flex-wrap:wrap}.key{white-space:nowrap}.swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:3px}.map-note{white-space:nowrap}.leaflet-container{font:11px/1.35 Arial,Helvetica,sans-serif}.map-canvas .leaflet-control-attribution{font-size:8px}.geo-tooltip{font-size:10px}.geo-tooltip strong{color:var(--blue)}.external-cards{display:flex;gap:4px;flex-wrap:wrap;padding:5px 8px;border-top:1px solid #edf0f2}.map-overseas{border:0;border-top:1px solid #edf0f2;border-radius:0;box-shadow:none}.map-overseas>summary{padding:7px 9px;font-size:9px}.map-overseas[open] .external-cards{border-top:0}.external-card{background:#f4f7fa;border:1px solid #e2e7ec;border-radius:4px;padding:3px 5px;font-size:8px;color:#45515d}.dept-overseas-card{width:112px;height:104px;flex:0 0 112px;overflow:hidden;background:#fff;border:1px solid #cbd5e1;border-radius:6px;box-shadow:0 1px 4px #0002;cursor:help}.map-tip{position:fixed;z-index:100000;display:none;max-width:min(340px,calc(100vw - 20px));padding:8px 10px;background:#fff;border:1px solid #8292a6;border-radius:6px;box-shadow:0 5px 18px #0003;color:#263238;font-size:11px;line-height:1.4;white-space:normal;overflow-wrap:anywhere;pointer-events:none}.map-tip strong{color:var(--blue)}.map-overseas[open] .dept-overseas-card,.map-overseas[open] .external-card{position:relative}.dept-overseas-title{height:20px;display:flex;align-items:center;justify-content:center;padding:0 3px;text-align:center;font-size:8px;line-height:1.1;font-weight:700;border-bottom:1px solid #e5e7eb}.dept-inset-map{width:100%;height:82px}.dept-inset-map .leaflet-control-container{display:none}.dept-overseas-value{height:82px;display:grid;place-items:center;text-align:center;padding:5px;font-size:12px;font-weight:700;color:#263238}.details{margin-top:13px}.details>.section-title{margin:0 2px 7px}.accordion{display:grid;gap:7px}details{background:#fff;border:1px solid var(--line);border-radius:7px;box-shadow:var(--shadow);overflow:hidden}summary{list-style:none;cursor:pointer;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;color:var(--blue);font-size:11px;font-weight:700}summary::-webkit-details-marker{display:none}summary:after{content:"+";font-size:15px;color:var(--blue)}details[open]>summary{background:#fafbfd;border-bottom:1px solid var(--line)}details[open]>summary:after{content:"−"}.ranked-more{margin-top:7px;box-shadow:none;border-color:#e5ebef}.ranked-more>summary{padding:6px 8px;font-size:10px}.ranked-more .inside{padding:7px 8px}.inside{padding:10px 12px 12px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:9px}.metric{border:1px solid #e5ebef;background:#fbfcfd;border-radius:6px;padding:7px 8px;min-height:53px}.metric span{display:block;color:var(--muted);font-size:9px}.metric b{display:block;color:var(--blue);font-size:15px;margin-top:2px}.columns{display:grid;grid-template-columns:1fr 1fr;gap:10px}.subheading{font-size:10px;font-weight:700;color:#31465a;margin:4px 0 6px}.barline{display:grid;grid-template-columns:minmax(120px,1.2fr) 2fr 32px;align-items:center;gap:7px;font-size:9px;padding:3px 0}.barline span{overflow:hidden;text-overflow:ellipsis}.bar{height:7px;border-radius:8px;overflow:hidden;background:#e8edf1}.bar i{display:block;height:100%;border-radius:8px;background:var(--blue)}.table-wrap{overflow:auto;border:1px solid #e7edf1;border-radius:6px}.table{border-collapse:collapse;width:100%;font-size:9px}.table th,.table td{padding:5px 7px;text-align:left;border-bottom:1px solid #edf1f4}.table th{background:#f5f8fa;color:#5e6e7d;font-size:8px}.table tr:last-child td{border-bottom:0}.table .num{text-align:right;white-space:nowrap}.split{display:grid;grid-template-columns:1fr 1fr;gap:8px}.splitbox{border:1px solid #e5ebef;border-radius:6px;padding:7px;background:#fbfcfd;min-width:0}.splitbox h4{font-size:9px;color:var(--blue);margin:0 0 5px}.notice{background:#f4f8fb;border-left:3px solid var(--teal);padding:6px 8px;margin-top:8px;font-size:9px;color:#405568}.empty{color:var(--muted);padding:14px;text-align:center;font-size:10px}.error{display:none;margin:8px 0;padding:8px 10px;background:#fff4f2;border:1px solid #f2c2bc;color:#8d2018;border-radius:5px;font-size:10px;white-space:pre-wrap}.footer{text-align:center;color:var(--muted);font-size:8px;padding:10px 0 0}@media(max-width:1100px){.overview{grid-template-columns:1fr}.goal-row{grid-template-columns:1fr 1fr}.maps{grid-template-columns:1fr 1fr}}@media(max-width:760px){.page{padding:7px}.masthead{padding:13px 11px 10px}.brand{min-width:100%}.selectors{width:100%}.maps{grid-template-columns:1fr}.map-canvas{height:230px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.columns,.split{grid-template-columns:1fr}.goal-row{grid-template-columns:1fr 1fr}.map-head{align-items:flex-start}.map-note{white-space:normal}}
+
+/* Style de la page Statistiques du démonstrateur Exercices–RETEX */
+:root{--blue:#000091;--red:#ce0500;--green:#18753c;--ink:#161616;--muted:#666;--line:#ddd;--bg:#f6f6f6;--pale:#ececfe;--shadow:none}
+html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
+.page{max-width:1600px;padding:0 28px 48px}
+.masthead{border:0;border-bottom:1px solid var(--line);box-shadow:none;border-radius:0;padding:20px 4px 22px;background:white}
+.masthead:before{display:none}
+.masthead .institution-mark{width:42px;height:12px;background:linear-gradient(90deg,#000091 0 33.3%,white 33.3% 66.7%,#e1000f 66.7%);border-radius:0}
+.masthead .institution{align-items:flex-start}
+.masthead .institution-text{font-size:11px;letter-spacing:0;color:var(--ink)}
+.masthead .institution-text span{color:var(--muted);font-size:12px;font-weight:400;text-transform:none;margin-top:4px}
+.masthead .title{font-size:25px}
+.masthead .subtitle{font-size:12px}
+.selectors{margin-left:auto}
+.field{font-size:12px;letter-spacing:0}
+.field select,.detail-filters select,.manual-editor select,.manual-editor textarea{background:#f3f3f3;border:0;border-bottom:2px solid #666;border-radius:3px 3px 0 0;padding:10px 12px;color:var(--ink);font-size:13px}
+.status{display:none}
+.stat-nav{display:flex;gap:4px;overflow:auto;border-bottom:1px solid var(--line);margin:20px 0 23px}
+.stat-nav button{padding:13px 19px;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--muted);font-weight:600;font-size:14px;white-space:nowrap;cursor:pointer}
+.stat-nav button.active{background:#fff;border-bottom-color:var(--blue);color:var(--blue)}
+.stat-nav button:focus-visible,.detail-filters select:focus-visible{outline:3px solid #0a76f6;outline-offset:2px}
+.view[hidden]{display:none!important}
+.panel,details{border-radius:0;box-shadow:none;border-color:var(--line)}
+.goal,.metric,.splitbox{border-radius:0;background:white}
+.metric{border-top:3px solid var(--blue);padding:14px 15px}
+.metric b{font-size:25px}
+.overview-title{margin:0 0 15px}
+.overview-title h2,.section-title{font-size:22px;color:var(--ink)}
+.panel-title,.map-name{font-size:14px;color:var(--ink)}
+.goal-label{font-size:12px}.goal-note,.subheading{font-size:11px}
+.detail-heading{margin:2px 0 20px}
+.detail-heading h2{font-size:26px;margin:0}
+.detail-heading p{color:var(--muted);font-size:13px;margin:6px 0 0}
+.detail-filters{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-bottom:20px}
+.detail-filters label{display:grid;gap:6px;font-weight:600}
+.detail-filters select{min-width:260px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.detail-panel{background:#fff;border:1px solid var(--line);padding:22px;margin-bottom:20px;min-width:0}
+.detail-panel h3{font-size:17px;margin:0 0 17px}
+.detail-panel .metric{min-height:92px}
+.detail-panel .metrics{gap:12px}
+.detail-panel .barline{font-size:12px;grid-template-columns:minmax(100px,1.4fr) 2fr 48px}
+.detail-panel .subheading{font-size:13px}
+.detail-panel .table{font-size:12px}
+.detail-panel .table th{font-size:11px}
+.detail-note{border-left:4px solid var(--blue);background:var(--pale);padding:12px 16px;font-size:12px;margin-bottom:20px}
+.manual-editor label{display:grid;gap:5px;font-weight:600}
+.manual-editor textarea{width:100%;min-height:65px}
+.manual-editor button{background:var(--blue);color:white;border:1px solid var(--blue);padding:9px 14px;cursor:pointer;margin-top:10px}
+.manual-editor button:disabled{opacity:.5}
+.manual-editor>div{border-top:1px solid var(--line);padding:16px 0}
+@media(max-width:850px){.detail-grid{grid-template-columns:1fr}.page{padding:0 12px 35px}.masthead .title{font-size:21px}.detail-filters select{min-width:190px}}
+
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+</head>
+<body>
+<main class="page">
+<header class="masthead">
+  <div class="brand">
+    <div class="institution"><span class="institution-mark" aria-hidden="true"></span><div class="institution-text">République française · Liberté, Égalité, Fraternité<br>Ministère de l’Intérieur<span>Sécurité civile et gestion des crises · DGSCGC</span></div></div>
+    <div class="title">Statistiques des exercices</div>
+    <div class="subtitle">Exercices &amp; RETEX · DGSCGC · BPAC</div>
+  </div>
+  <div class="selectors"><label class="field">Année<select id="year"></select></label></div>
+  <span class="status" id="updated" aria-hidden="true"></span>
+</header>
+<div id="error" class="error" role="alert"></div>
+<nav class="stat-nav" aria-label="Vues statistiques">
+<button type="button" id="tabGeneral" data-view="general" class="active" aria-current="page">Vue générale</button>
+<button type="button" id="tabDepartment" data-view="department">Vue départementale</button>
+<button type="button" id="tabZone" data-view="zone">Vue zonale</button>
+</nav><section class="view" id="viewGeneral">
+<div class="overview-title"><h2>Vue d’ensemble</h2><span id="selectionLabel"></span></div>
+<section class="overview">
+  <article class="panel goal-panel"><div class="panel-title">Réalisation des objectifs annuels</div><div class="goal-row" id="goals"><div class="empty">Chargement…</div></div></article>
+  <div class="maps">
+    <article class="panel map-panel"><div class="map-head"><div class="map-name">Départements et collectivités</div><div class="map-controls"><label class="field">Objectif<select id="deptTheme"></select></label><label class="field" id="planWrap" style="display:none">Plan<select id="planSelect"></select></label></div></div><div class="map-canvas" id="deptMap"></div><div class="map-foot"><div class="legend" id="deptLegend"></div><span class="map-note" id="deptMapNote"></span></div><details class="map-overseas" id="deptOutlyingPanel"><summary>Départements et collectivités ultramarins <span id="deptOutlyingCount"></span></summary><div class="external-cards" id="deptOutlying"></div></details></article>
+    <article class="panel map-panel"><div class="map-head"><div class="map-name">États-majors de zone (EMIZ)</div><div class="map-controls"><label class="field">Objectif<select id="emizTheme"></select></label></div></div><div class="map-canvas" id="emizMap"></div><div class="map-foot"><div class="legend" id="emizLegend"></div><span class="map-note" id="emizMapNote"></span></div><details class="map-overseas" id="emizOutlyingPanel"><summary>Zones ultramarines <span id="emizOutlyingCount"></span></summary><div class="external-cards" id="emizOutlying"></div></details></article>
+  </div>
+</section>
+<section class="details"><h2 class="section-title">Indicateurs détaillés</h2><div class="accordion">
+  <details><summary>Synthèse départementale</summary><div class="inside"><div class="subheading">Activité et objectifs</div><div class="metrics" id="deptMetrics"></div><div class="columns"><div><div class="subheading">Types d’exercices réalisés</div><div id="deptTypes"></div></div><div><div class="subheading">Risques recensés</div><div id="deptRisks"></div></div></div><div class="columns" style="margin-top:9px"><div><div class="subheading">DO joué — nombre d’exercices et répartition</div><div id="deptActors"></div></div><div><div class="subheading">Alerte et participation de la population</div><div id="deptPublic"></div></div></div><div class="columns" style="margin-top:9px"><div><div class="subheading">Plans activés à titre dominant</div><div id="deptPlans"></div></div><div></div></div></div></details>
+  <details><summary>Synthèse zonale</summary><div class="inside"><div class="subheading">Activité et objectifs des EMIZ</div><div class="metrics" id="emizMetrics"></div><div class="subheading">Détail par zone</div><div id="emizByZone"></div><div class="columns"><div><div class="subheading">Types d’exercices — ensemble des zones</div><div id="emizTypes"></div></div><div><div class="subheading">Risques recensés — ensemble des zones</div><div id="emizRisks"></div></div></div><div class="columns" style="margin-top:9px"><div><div class="subheading">Plans activés à titre dominant</div><div id="emizPlans"></div></div></div><div class="notice">Cette synthèse porte exclusivement sur les exercices organisés par les EMIZ au niveau zonal.</div></div></details>
+  <details><summary>Synthèse financière</summary><div class="inside"><div class="metrics" id="financeMetrics"></div><div class="subheading">Détail par territoire</div><div class="table-wrap"><table class="table"><thead><tr><th>Territoire</th><th class="num">Demandé</th><th class="num">Reçu renseigné</th><th class="num">Taux reçu</th><th class="num">Mises à jour attendues</th></tr></thead><tbody id="financeRows"></tbody></table></div><div class="notice">Les zones correspondent aux EMIZ présentés dans la rubrique précédente. Les collectivités sans zone sont présentées séparément.</div></div></details>
+</div></section>
+</section>
+<section class="view" id="viewDepartment" hidden>
+ <div class="detail-heading"><h2>Tableau de bord départemental</h2><p>Suivi d’un département ou d’une collectivité sur l’année sélectionnée.</p></div>
+ <div class="detail-filters"><label>Département ou collectivité<select id="detailDepartment"></select></label></div>
+ <div class="detail-panel"><h3>Activité et objectif annuel</h3><div class="metrics" id="detailDeptMetrics"></div><div id="detailDeptForecast" class="detail-note"></div></div>
+ <div class="detail-grid">
+  <div class="detail-panel"><h3>Objectifs thématiques</h3><div id="detailDeptThemes"></div></div>
+  <div class="detail-panel"><h3>Risques et exercices</h3><div id="detailDeptRisks"></div></div>
+  <div class="detail-panel"><h3>Alerte et participation</h3><div id="detailDeptAlerts"></div></div>
+  <div class="detail-panel"><h3>Financement</h3><div id="detailDeptFinance"></div></div>
+ </div>
+</section>
+<section class="view" id="viewZone" hidden>
+ <div class="detail-heading"><h2>Tableau de bord zonal</h2><p>Activité propre de l’EMIZ et situation des départements de sa zone.</p></div>
+ <div class="detail-filters"><label>Zone<select id="detailZone"></select></label></div>
+ <div class="detail-panel"><h3>Activité zonale et objectifs</h3><div class="metrics" id="detailZoneMetrics"></div><div id="detailZoneWatch" class="detail-note"></div></div>
+ <div class="detail-grid">
+  <div class="detail-panel"><h3>Situation des départements</h3><div id="detailZoneDepartments"></div></div>
+  <div class="detail-panel"><h3>Couverture thématique</h3><div id="detailZoneThemes"></div></div>
+  <div class="detail-panel"><h3>Risques recensés</h3><div id="detailZoneRisks"></div></div>
+  <div class="detail-panel"><h3>Financement de la zone</h3><div id="detailZoneFinance"></div></div>
+ </div>
+ <div class="detail-panel"><h3>Validation des objectifs zonaux</h3><div id="detailZoneManual" class="manual-editor"></div><div id="detailZoneFeedback" role="status"></div></div>
+</section>
+<footer class="footer">DGSCGC · BPAC · Statistiques Exercices &amp; RETEX · Données issues du classeur Grist</footer>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const TABLES={years:'Annee',admins:'NIVEAUX_ADMINISTRATIFS',ind:'INDICATEURS_NIVEAUX_V2',emiz:'STATISTIQUES_GENERALE_EMIZ',carteEmiz:'CARTE_EMIZ',bdd:'BDD_SYNAPSE_2026',finance:'STATISTIQUES_FINANCEMENT_EMIZ',objectives:'OBJECTIFS_CIRCULAIRE',deptThemes:'THEMES_CARTOGRAPHIE',emizThemes:'THEMES_CARTOGRAPHIE_EMIZ',plans:'PLANS_CARTOGRAPHIE',choiceYear:'CHOIX_ANNEE_CARTOGRAPHIE'};
+const GEO={dept:'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-avec-outre-mer.geojson',emiz:'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-avec-outre-mer.geojson'};
+const DEPT_THEMES=[['OBJECTIF_QUANT','Atteinte de l’objectif quantitatif'],['OBJECTIF_QUAL','Atteinte de l’objectif qualitatif'],['PREVISION','Atteinte prévisionnelle'],['REALISES','Nombre d’exercices réalisés'],['PROGRAMMES','Nombre d’exercices programmés'],['RETARD','Exercices programmés en retard'],['NAT','Couverture NAT'],['POP','Couverture POP'],['CYB','Couverture CYB'],['RUP','Couverture RUP'],['PLAN','Plans mis en œuvre']];
+const EMIZ_THEMES=[['OBJECTIF_QUANT','Atteinte de l’objectif quantitatif'],['OBJECTIF_QUAL','Atteinte de l’objectif qualitatif'],['PREVISION','Atteinte prévisionnelle'],['REALISES','Nombre d’exercices réalisés'],['PROGRAMMES','Nombre d’exercices programmés'],['RETARD','Exercices programmés en retard']];
+const ZONE_REGIONS={'ZD-PARIS':['Île-de-France'],'ZD-NORD':['Hauts-de-France'],'ZD-OUEST':['Bretagne','Centre-Val de Loire','Normandie','Pays de la Loire'],'ZD-EST':['Grand Est','Bourgogne-Franche-Comté'],'ZD-SUD-OUEST':['Nouvelle-Aquitaine'],'ZD-SUD-EST':['Auvergne-Rhône-Alpes'],'ZD-SUD':['Corse','Occitanie','Provence-Alpes-Côte d’Azur'],'ZD-ANTILLES':['Guadeloupe','Martinique'],'ZD-SUD-OCEAN-INDIEN':['La Réunion','Mayotte']};
+const METRO_EMIZ_ZONES=['ZD-PARIS','ZD-NORD','ZD-OUEST','ZD-EST','ZD-SUD-OUEST','ZD-SUD-EST','ZD-SUD'];
+const ZONE_OUTLYING=[['ZD-ANTILLES','Antilles'],['ZD-SUD-OCEAN-INDIEN','Sud Océan Indien']];
+const PALETTE={blue:'#000091',green:'#18753c',amber:'#a66a00',red:'#b42318',grey:'#cbd5e1',seq:['#dbeafe','#bfdbfe','#93c5fd','#60a5fa','#2563eb']};
+const DEPT_MAP_COLORS={green:'#2e7d32',orange:'#ed6c02',red:'#c62828',grey:'#d1d5db',blue1:'#dbeafe',blue2:'#bfdbfe',blue3:'#93c5fd',blue4:'#60a5fa',blue5:'#2563eb',real0:'#991b1b',real1:'#c62828',real2:'#ef9a9a',real3:'#f59e0b',real4:'#a5d6a7',real5:'#66bb6a',real6:'#43a047',real7:'#2e7d32',real8:'#1b5e20',plan1:'#c8e6c9',plan2:'#81c784',plan3:'#4caf50',plan4:'#2e7d32',plan5:'#1b5e20'};
+const OVERSEAS_DEPARTMENTS=[['971','Guadeloupe'],['972','Martinique'],['973','Guyane'],['974','La Réunion'],['975','Saint-Pierre-et-Miquelon'],['976','Mayotte'],['977','Saint-Barthélemy'],['978','Saint-Martin'],['986','Wallis-et-Futuna'],['987','Polynésie française'],['988','Nouvelle-Calédonie']];
+let S={years:[],yearMap:new Map(),admins:[],adminById:new Map(),ind:[],emiz:[],carteEmiz:[],bdd:[],finance:[],year:'',plan:'',deptTheme:'OBJECTIF',emizTheme:'OBJECTIF',deptGeo:null,emizGeo:null,deptMap:null,emizMap:null,deptLayer:null,deptInsetMaps:[],emizLayer:null,emizInsetMaps:[],objectives:[],deptThemes:[],emizThemes:[],plansCatalog:[],planById:new Map(),planCountCache:null,choiceYear:[],exerciseCountCache:null};
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function norm(v){return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+function rows(t){if(!t||!Array.isArray(t.id))return[];return t.id.map((id,i)=>{const r={id};for(const k of Object.keys(t))if(k!=='id'&&Array.isArray(t[k]))r[k]=t[k][i];return r})}
+function cell(r,names){if(!r)return undefined;const lookup=new Map(Object.keys(r).map(k=>[norm(k),k]));for(const n of names){const k=lookup.get(norm(n));if(k!==undefined)return r[k]}return undefined}
+function text(v){if(v===null||v===undefined)return'';if(Array.isArray(v)){const a=v[0]==='L'?v.slice(1):v;return a.map(text).filter(Boolean).join(', ')}if(typeof v==='object')return String(v.displayValue??v.label??v.value??'');return String(v).trim()}
+function number(v){if(Array.isArray(v)&&v[0]==='E')return 0;if(v===null||v===undefined||v==='')return 0;const n=Number(v);return Number.isFinite(n)?n:0}
+function refId(v){if(typeof v==='object'&&v!==null){if(v.rowId!=null)return Number(v.rowId);if(v.id!=null)return Number(v.id)}if(Array.isArray(v))return v.find(x=>typeof x==='number')??null;const n=Number(v);return Number.isFinite(n)?n:null}
+function yearFrom(v){if(v&&typeof v==='object'&&v.Annee!=null)return String(parseInt(v.Annee,10));const s=String(v??'');const m=s.match(/20\d{2}/);if(m)return m[0];const id=refId(v);return id==null?'':(S.yearMap.get(id)||'')}
+function yearOf(r){
+  const direct=yearFrom(cell(r,['Annee','Année','Annee_exercice','Année_exercice','Annee de l’exercice','Année de l’exercice','Annee_Exercice']));
+  if(direct)return direct;
+  for(const field of ['Cle_Annee_Niveau','Cle_Annee_Zone','Cle_Annee_Exercice','Cle_Annee']){
+    const match=text(cell(r,[field])).match(/20\d{2}/);if(match)return match[0];
+  }
+  return '';
+}
+function adminOf(v){const id=refId(v);if(id!=null&&S.adminById.has(id))return S.adminById.get(id);const s=text(v);return S.admins.find(a=>text(cell(a,['Niveau_administratif','Zone']))===s)||null}
+function territoryName(r){const raw=cell(r,['Niveau_administratif','Departement','Territoire']);const a=adminOf(raw);return text(cell(a,['Niveau_administratif']))||text(raw)}
+function territoryType(r){const raw=cell(r,['Type_niveau','Type niveau']);const a=adminOf(cell(r,['Niveau_administratif']));return text(raw)||text(cell(a,['Type_niveau','Type niveau']))}
+function isDepartment(r){const t=norm(territoryType(r));return t.includes('departement')||t.includes('collectivite')||t.includes('departementzone')||cell(r,['Est_departement_zone'])===true||cell(r,['Est_departement_zone'])===1}
+function isEmiz(r){const t=norm(territoryType(r));return t==='zone'||t==='emiz'||t.includes('zone')||t.includes('emiz')}
+function zoneCode(r){if(!r)return'';const known=['ZD-SAINT-PIERRE-ET-MIQUELON','ZD-SUD-OCEAN-INDIEN','ZD-SUD-OUEST','ZD-SUD-EST','ZD-POLYNESIE','ZD-CALEDONIE','ZD-ANTILLES','ZD-GUYANE','ZD-PARIS','ZD-NORD','ZD-OUEST','ZD-EST','ZD-SUD'];const zone=cell(r,['Zone']);const zoneAdmin=adminOf(zone);const src=[text(cell(r,['Cle_Annee_Zone'])),text(zone),text(cell(zoneAdmin,['Niveau_administratif']))].join(' ').toUpperCase();return known.find(z=>src.includes(z))||''}
+function zoneOf(r){const a=adminOf(cell(r,['Niveau_administratif']));const z=cell(r,['Zone']);const zr=adminOf(z);const label=text(cell(zr,['Niveau_administratif']))||text(z)||text(cell(a,['Zone']));return label.includes('|')?label.split('|').pop().trim():label}
+function exerciseCounts(){
+  if(S.exerciseCountCache?.year===S.year&&S.exerciseCountCache?.bdd===S.bdd)return S.exerciseCountCache;
+  const byTerritory=new Map();
+  for(const r of orgExercises()){
+    const state=norm(text(cell(r,['Etat','État','Statut'])));
+    const key=territoryKey(r),x=byTerritory.get(key)||{real:0,planned:0,cancel:0,late:0};
+    if(state.includes('realise'))x.real++;
+    else if(state.includes('programme'))x.planned++;
+    else if(state.includes('annule'))x.cancel++;
+    byTerritory.set(key,x);
+  }
+  const hasExercises=[...byTerritory.values()].some(x=>x.real||x.planned||x.cancel);
+  return S.exerciseCountCache={year:S.year,bdd:S.bdd,byTerritory,useFallback:Number(S.year)<2026&&hasExercises};
+}
+function stat(r,type='dept'){
+  let real=number(cell(r,['Nb_Realise','Nb_Exercices_Realises','Nb_exercices_realises'])),planned=number(cell(r,['Nb_Programme','Nb_Exercices_Programmes','Nb_exercices_programmes']));
+  let late=number(cell(r,['Nb_Programme_En_Retard','Nb_Exercices_En_Retard','Nb_Retard'])),cancel=number(cell(r,['Nb_Annule','Nb_Exercices_Annules']));
+  const fallback=exerciseCounts();
+  let replaced=false;if(fallback.useFallback){const x=fallback.byTerritory.get(territoryKey(r));real=x?.real||0;planned=x?.planned||0;cancel=x?.cancel||0;late=x?.late||0;replaced=true}
+  const forecastRaw=cell(r,['Nb_Prevu','Nb_Previsionnel','Nb_Exercices_Previsionnels']),goal=number(cell(r,['Objectif','Objectif_annuel']))||(type==='emiz'?2:4);
+  return{real,planned,forecast:replaced||forecastRaw==null?real+planned:number(forecastRaw),late,cancel,goal,raw:r}
+}
+function pct(a,b){return b?Math.round(a/b*100):0}
+function fmt(n){return Math.round(number(n)).toLocaleString('fr-FR')}
+function euro(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(number(n))}
+function yearRows(data){return data.filter(r=>yearOf(r)===S.year)}
+function currentIndicators(){return yearRows(S.ind)}
+function departments(){return currentIndicators().filter(isDepartment)}
+function emizSummaryRows(){return yearRows(S.emiz)}
+function emizSummary(){const rows=emizSummaryRows();return rows.find(isSelected)||rows[0]||null}
+function emizMapRows(){const rows=yearRows(S.carteEmiz),selected=rows.filter(isSelected);return selected.length?selected:(rows.length?rows:S.carteEmiz.filter(isSelected))}
+function isSelected(r){const v=cell(r,['Annee_selectionnee','Année_selectionnée']);return v===true||v===1||String(v).toLowerCase()==='true'}
+function isSaintPierreZone(r){const s=norm([zoneCode(r),zoneOf(r),territoryName(r),text(cell(r,['Zone']))].join(' '));return s.includes('saintpierre')||s.includes('miquelon')}
+const EXCLUDED_EMIZ_ZONES=['caledonie','guyane','polynesie','saintpierre','miquelon'];
+function isExcludedEmizZone(r){const s=norm([zoneCode(r),zoneOf(r),territoryName(r),text(cell(r,['Zone']))].join(' '));return EXCLUDED_EMIZ_ZONES.some(term=>s.includes(term))}
+function emizRows(){return currentIndicators().filter(r=>{if(isSaintPierreZone(r)||isExcludedEmizZone(r))return false;const type=norm(territoryType(r)),name=norm(territoryName(r));return type==='zone'||type==='emiz'||(name.startsWith('zd')&&!type.includes('departement')&&!type.includes('collectivite'))})}
+function nationalRow(){const rs=currentIndicators();return rs.find(r=>norm(territoryType(r))==='national'||norm(territoryName(r))==='national')||null}
+function orgExercises(){return yearRows(S.bdd).filter(r=>{
+ const p=norm(text(cell(r,['Posture'])));
+ if(Number(S.year)>=2026)return !p||p==='organisateur';
+ if(!p||p==='organisateur'||p==='direction'||p==='vigilance')return true;
+ // Les anciennes postures de mobilisation sont utilisées sur les fiches zonales.
+ return territoryClass(r)==='emiz'&&(p==='veille'||p==='renforce');
+})}
+function exerciseType(r){return text(cell(r,['Type_d_exercice','Type_exercice','Type d’exercice','Type d’exercice']))||'Non renseigné'}
+function riskType(r){return text(cell(r,['Type_de_risque','Type de risque']))||'Non renseigné'}
+function riskName(r){return text(cell(r,['Risque']))||'Non renseigné'}
+function planName(r){const raw=cell(r,['Plan_dominant','Plan dominant']);const id=refId(raw);if(id!=null&&S.planById?.has(id))return S.planById.get(id);return text(raw)||'Non renseigné'}
+function planTypesImplemented(r){const all=['Plan_dominant','Plans_concourant','Plan_concourant'].map(name=>norm(text(cell(r,[name])))).join(' '),types=[];if(all.includes('planintercommunaldesauvegarde'))types.push('PICS');if(all.includes('plancommunaldesauvegarde'))types.push('PCS');return types}
+function territoryClass(x){const name=norm(territoryName(x));if(name.startsWith('zd'))return'emiz';if(/^(?:[0-9]{1,3}|2a|2b)/.test(name))return'dept';const r=adminOf(cell(x,['Niveau_administratif'])),t=norm(text(cell(x,['Type_niveau']))||text(cell(r,['Type_niveau'])));if(t.includes('departement')||t.includes('collectivite'))return'dept';if(t.includes('zone')||t.includes('emiz'))return'emiz';return''}
+function territoryKey(r){const name=territoryName(r),dept=name.match(/^\s*(2[AB]|\d{1,3})\s*[-–—]/i),zone=name.match(/^\s*(ZD-[A-Z-]+)/i);if(dept)return'code:'+dept[1].toUpperCase().padStart(2,'0');if(zone)return'zone:'+zone[1].toUpperCase();const code=codeOf(r);return code?'code:'+code:'name:'+norm(name)}
+function sameTerritory(a,b){return territoryKey(a)===territoryKey(b)}
+function exercisePlanLabels(r){
+  const labels=[];
+  for(const field of ['Plan_dominant','Plan dominant','Plans_concourant','Plans_concourants','Plan_concourant','Plans concourants']){
+    const raw=cell(r,[field]);if(raw==null||raw==='')continue;
+    const refs=Array.isArray(raw)&&raw[0]==='L'?raw.slice(1).filter(v=>typeof v==='number'):[];
+    if(refs.length){refs.forEach(id=>{const label=S.planById.get(Number(id));if(label)labels.push(label)});continue}
+    const id=refId(raw);
+    if(id!=null&&S.planById.has(id)){labels.push(S.planById.get(id));continue}
+    const value=text(raw);
+    if(value)labels.push(...value.split(/[,;|\n]+/).map(x=>x.trim()).filter(Boolean));
+  }
+  return [...new Set(labels.map(x=>norm(x)).filter(Boolean))];
+}
+function exerciseUsesPlan(r,selected){const target=norm(selected);return !!target&&exercisePlanLabels(r).includes(target)}
+function selectedPlanCounts(){const key=S.year+'|'+S.plan+'|'+S.bdd.length;return S.planCountCache?.key===key&&S.planCountCache.counts?S.planCountCache.counts:new Map()}
+function ensurePlanCounts(){
+  const key=S.year+'|'+S.plan+'|'+S.bdd.length;
+  if(S.planCountCache?.key===key&&S.planCountCache.counts)return Promise.resolve(S.planCountCache.counts);
+  if(S.planCountCache?.key===key&&S.planCountCache.promise)return S.planCountCache.promise;
+  const job={key,counts:null,promise:null},counts=new Map(),exercises=orgExercises();let index=0;
+  S.planCountCache=job;
+  job.promise=new Promise(resolve=>{
+    const step=()=>{
+      const end=Math.min(index+180,exercises.length);
+      for(;index<end;index++){const exercise=exercises[index];if(!exerciseUsesPlan(exercise,S.plan))continue;const territory=territoryKey(exercise);counts.set(territory,(counts.get(territory)||0)+1)}
+      if(index<exercises.length){setTimeout(step,0);return}
+      if(S.planCountCache===job)job.counts=counts;
+      resolve(counts);
+      if(S.planCountCache===job&&S.deptTheme==='PLAN')drawDeptMap();
+    };
+    step();
+  });
+  return job.promise;
+}
+function grouped(items,keyFn){const m=new Map();for(const r of items){const k=keyFn(r)||'Non renseigné';m.set(k,(m.get(k)||0)+1)}return[...m.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'fr'))}
+function groupedFieldValuesByExercise(exercises,fieldNames){const counts=new Map();for(const exercise of exercises){const seen=new Set();for(const value of actorLabels(cell(exercise,fieldNames))){const label=String(value||'').trim(),key=norm(label);if(!key||seen.has(key))continue;seen.add(key);const item=counts.get(key)||{label,count:0};item.count++;counts.set(key,item)}}return[...counts.values()].map(x=>[x.label,x.count]).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'fr'))}
+function barRows(arr,scaleMax){if(!arr.length)return'<div class="empty">Aucune donnée disponible.</div>';const max=Math.max(scaleMax||1,...arr.map(x=>x[1]));return arr.map(([label,value])=>`<div class="barline"><span title="${esc(label)}">${esc(label)}</span><div class="bar"><i style="width:${Math.max(value?2:0,Math.round(value/max*100))}%"></i></div><b>${fmt(value)}</b></div>`).join('')}
+function limitedBarRows(arr,limit=10){if(arr.length<=limit)return barRows(arr);const max=arr[0][1];return barRows(arr.slice(0,limit),max)+'<details class="ranked-more"><summary>Voir les '+(arr.length-limit)+' autres plans</summary><div class="inside">'+barRows(arr.slice(limit),max)+'</div></details>'}
+function metric(label,value,note=''){return`<div class="metric"><span>${esc(label)}</span><b>${value}</b>${note?`<span>${esc(note)}</span>`:''}</div>`}
+function ring(label,done,total){const p=pct(done,total);return`<div class="goal"><div class="ring" style="--p:${p}"><strong>${p}%</strong></div><div><div class="goal-label">${esc(label)}</div><div class="goal-note">${fmt(done)} sur ${fmt(total)} · ${fmt(Math.max(0,total-done))} restant(s)</div></div></div>`}
+function yes(v){const s=norm(text(v));return v===true||v===1||['oui','yes','true','vrai','active','realise'].includes(s)}
+const ALERT_CHANNELS=[{label:'Utilisation de FR-Alert',fields:['Utilisation FR ALERT','Utilisation FR-Alert','FR-Alert utilisé','FR Alert']},{label:'Activation des sirènes SAIP',fields:['Activation des sirènes SAIP','Activation des sirenes SAIP','SAIP activé','Sirènes SAIP']},{label:'Alerte radio',fields:['Alerte radio','Alerte par radio','Radio alerte']}];
+function alertChannelRows(items){return ALERT_CHANNELS.map(x=>{const n=items.filter(r=>yes(cell(r,x.fields))).length;return '<tr><td>'+esc(x.label)+'</td><td class="num">'+fmt(n)+'</td><td class="num">'+pct(n,items.length)+' %</td></tr>'}).join('')}
+function alertChannelBars(items){return ALERT_CHANNELS.map(x=>{const n=items.filter(r=>yes(cell(r,x.fields))).length;return '<div class="barline"><span>'+esc(x.label)+'</span><div class="bar"><i style="width:'+pct(n,items.length)+'%"></i></div><b>'+pct(n,items.length)+'%</b></div>'}).join('')}
+function actorLabels(v){if(Array.isArray(v)){const a=v[0]==='L'?v.slice(1):v;return a.flatMap(actorLabels)}const s=text(v);return s?s.split(/[;|\n]+/).map(x=>x.trim()).filter(Boolean):[]}
+function codeOf(r){const a=adminOf(cell(r,['Niveau_administratif']));let c=text(cell(a,['Code_geo','Code_geographique','Code_insee','Code_INSEE']))||text(cell(r,['Code_geo','Code_geographique']));if(!c){const n=territoryName(r);c=n.match(/^\s*((?:2[AB]|\d{1,3}))\s*[-–—]/)?.[1]||''}return String(c).trim().toUpperCase().replace(/^([0-9])$/,'0$1')}
+function statusText(value){return norm(value)}
+function circularObjectives(kind){return S.objectives.filter(o=>yearOf(o)===S.year&&yes(cell(o,['Actif']))&&(()=>{const n=norm(cell(o,['Niveau']));return kind==='dept'?(n.includes('departement')||n.includes('collectivite')):(n.includes('emiz')||n.includes('zone'))})())}
+function objectiveCode(o){return text(cell(o,['Code_objectif','Code']))}
+function objectiveName(o){const c=objectiveCode(o),known={NAT:'Risques naturels',POP:'Population et élus',CYB:'Cyber',RUP:'Rupture capacitaire'};return known[c]||text(cell(o,['Intitule','Libelle','Libellé','Nom_objectif','Objectif']))||c}
+function themeCanonical(code,label){
+  const c=String(code||'').toUpperCase(),n=norm(label);
+  if(c==='OBJECTIF'||(n.includes('objectif')&&!n.includes('prevision')))return'OBJECTIF_QUANT';
+  if(c==='OBJECTIF_QUAL'||c==='THEMATIQUE'||n.includes('couverturethematiq'))return'OBJECTIF_QUAL';
+  if(c==='PREVISION'||n.includes('prevision'))return'PREVISION';
+  if(c==='REALISES'||n.includes('realise'))return'REALISES';
+  if(c==='PROGRAMMES'||n.includes('programme'))return'PROGRAMMES';
+  if(c==='RETARD'||n.includes('retard'))return'RETARD';
+  if(c==='PLAN'||n.includes('plan'))return'PLAN';
+  return c||label;
+}
+function themeItems(kind){
+  const source=kind==='emiz'?S.emizThemes:S.deptThemes, fallback=kind==='emiz'?EMIZ_THEMES:DEPT_THEMES;
+  const raw=source.length?source:fallback.map(([Code,Libelle])=>({Code,Libelle}));
+  const items=[];let hasQual=false;
+  raw.forEach(r=>{
+    const code=text(cell(r,['Code'])),label=text(cell(r,['Libelle','Libellé','Nom']));
+    const value=themeCanonical(code,label);
+    if(value==='OBJECTIF_QUANT'){
+      items.push({value,label:'Atteinte de l’objectif quantitatif'});
+      if(!hasQual){items.push({value:'OBJECTIF_QUAL',label:'Atteinte de l’objectif qualitatif'});hasQual=true}
+    }else items.push({value,label:label||code||value});
+  });
+  if(!items.some(x=>x.value==='OBJECTIF_QUANT'))items.unshift({value:'OBJECTIF_QUAL',label:'Atteinte de l’objectif qualitatif'},{value:'OBJECTIF_QUANT',label:'Atteinte de l’objectif quantitatif'});
+  else if(!hasQual)items.splice(items.findIndex(x=>x.value==='OBJECTIF_QUANT')+1,0,{value:'OBJECTIF_QUAL',label:'Atteinte de l’objectif qualitatif'});
+  const unique=new Set();return items.filter(x=>{if(unique.has(x.value))return false;unique.add(x.value);return true});
+}
+function mapSelectorOptions(kind,current){return themeItems(kind).map(x=>'<option value="'+esc(x.value)+'" '+(x.value===current?'selected':'')+'>'+esc(x.label)+'</option>').join('')}
+function mapThemeLabel(theme,kind){const found=themeItems(kind).find(x=>x.value===theme);if(found)return found.label;const o=circularObjectives(kind).find(x=>objectiveCode(x)===theme);return o?objectiveName(o):theme}
+function coverageColor(value){const st=norm(value);if(!st||st.includes('aucunobjectif')||st.includes('nonrenseigne')||st.includes('nonapplicable'))return DEPT_MAP_COLORS.grey;if(st.includes('noncouvert')||st.includes('acouvrir')||st.includes('nonatteint'))return DEPT_MAP_COLORS.red;if(st.includes('realise')||st.includes('atteint')||st.includes('couvert'))return DEPT_MAP_COLORS.green;if(st.includes('programme')||st.includes('prevision')||st.includes('prevu'))return DEPT_MAP_COLORS.orange;return DEPT_MAP_COLORS.grey}
+function categoryValue(r,theme,kind='dept'){
+  if(theme==='OBJECTIF_QUANT'||theme==='OBJECTIF'){const s=stat(r,kind),goal=kind==='emiz'?2:4;return{kind:'status',value:s.real>=goal?'Atteint':s.forecast>=goal?'Prévu':'À atteindre',n:s.real,goal,forecast:s.forecast}}
+  if(theme==='OBJECTIF_QUAL'||theme==='THEMATIQUE'){const active=circularObjectives(kind),statuses=active.map(o=>text(cell(r,['Couverture_'+objectiveCode(o),'Etat_Couverture_'+objectiveCode(o),'Statut_'+objectiveCode(o)]))).filter(Boolean),ns=statuses.map(norm);let value='Aucun objectif fixé';if(ns.length){if(ns.every(x=>x.includes('realise')||x.includes('atteint')||x.includes('couvert')))value='Réalisé';else if(ns.some(x=>x.includes('programme')||x.includes('prevu'))&&!ns.some(x=>x.includes('noncouvert')||x.includes('acouvrir')))value='Programmé';else value='Non couvert'}return{kind:'coverage',value}}
+  if(!['PREVISION','REALISES','PROGRAMMES','RETARD','PLAN'].includes(theme))return{kind:'coverage',value:text(cell(r,['Couverture_'+theme,'Etat_Couverture_'+theme,'Statut_'+theme]))}
+  if(r&&cell(r,['Statut'])!==undefined&&cell(r,['Valeur'])!==undefined)return carteCategory(r,theme);
+  if(theme==='PREVISION'){const s=stat(r,kind);return{kind:'status',value:s.forecast>=s.goal?'Atteint':'Non atteint',n:s.forecast,goal:s.goal}}
+  if(theme==='RETARD'){const s=stat(r,kind);return{kind:'delay',value:s.late}}
+  if(theme==='PLAN')return{kind:'count',value:selectedPlanCounts().get(territoryKey(r))||0}
+  const s=stat(r,kind);return{kind:'count',value:theme==='REALISES'?s.real:s.planned}
+}function carteCategory(r,theme){const status=text(cell(r,['Statut'])),s=norm(status),n=number(cell(r,['Valeur']));if(theme==='OBJECTIF'){if(s.includes('objectifatteint')&&!s.includes('previsionnel'))return{kind:'status',value:s.includes('non')?'À atteindre':'Atteint',detail:status};return{kind:'status',value:'À atteindre',detail:status}}if(theme==='PREVISION'){if(s.includes('previsionnel'))return{kind:'status',value:s.includes('non')?'Non atteint':'Atteint',detail:status};return{kind:'status',value:'Non atteint',detail:status}}if(theme==='RETARD')return{kind:'delay',value:s.includes('aucun')?0:s.includes('retard')?Math.max(1,n):n,detail:status};return{kind:'count',value:n,detail:status}}
+function colorFor(v,max){if(!v)return PALETTE.grey;if(v.kind==='status'){if(v.value==='Atteint')return PALETTE.green;if(v.value==='Prévu')return PALETTE.amber;return PALETTE.red}if(v.kind==='delay')return v.value===0?PALETTE.green:PALETTE.red;if(v.kind==='coverage'){const s=statusText(v.value);return coverageColor(v.value)}const n=number(v.value);if(n<=0)return PALETTE.grey;return PALETTE.seq[Math.min(4,Math.floor((n/Math.max(1,max))*5))]}
+function depCodeFromFeature(f){const p=f?.properties||{};const c=String(p.code??p.code_dept??'').toUpperCase();return c.length===1?'0'+c:c}
+function regionName(f){return text(f?.properties?.nom||f?.properties?.name||f?.properties?.libelle)}
+function featureZone(f){const direct=String(f?.properties?.zone||'').toUpperCase();if(ZONE_REGIONS[direct])return direct;const n=norm(regionName(f));for(const[z,regs]of Object.entries(ZONE_REGIONS))if(regs.some(x=>norm(x)===n))return z;return''}
+function buildEmizZoneFeatures(){const out=[];for(const[z,regions]of Object.entries(ZONE_REGIONS)){const parts=(S.emizGeo?.features||[]).filter(f=>regions.some(n=>norm(n)===norm(regionName(f))));if(!parts.length)continue;let merged=parts[0];for(let i=1;i<parts.length;i++){try{if(window.turf?.union)merged=turf.union(merged,parts[i])||merged}catch(e){console.warn('Fusion géographique '+z,e)}}merged={...merged,properties:{...(merged.properties||{}),zone:z,nom:z}};out.push(merged)}return out}
+function zoneStatFor(code){return emizRows().find(r=>norm(zoneCode(r))===norm(code))||emizMapRows().find(r=>norm(zoneCode(r))===norm(code))||null}
+function mapLegend(id,theme,mode='dept'){
+  const box=$(id);if(theme==='OBJECTIF'){box.innerHTML='<span class="key"><i class="swatch" style="background:#18753c"></i>Atteint</span><span class="key"><i class="swatch" style="background:#a66a00"></i>Prévu</span><span class="key"><i class="swatch" style="background:#b42318"></i>À atteindre</span>';return}
+  if(theme==='PREVISION'){box.innerHTML='<span class="key"><i class="swatch" style="background:#18753c"></i>Atteint</span><span class="key"><i class="swatch" style="background:#b42318"></i>Non atteint</span>';return}
+  if(theme==='RETARD'){box.innerHTML='<span class="key"><i class="swatch" style="background:#18753c"></i>Aucun retard</span><span class="key"><i class="swatch" style="background:#b42318"></i>Retards signalés</span>';return}
+  if(theme==='NAT'||theme==='POP'||theme==='CYB'||theme==='RUP'){box.innerHTML='<span class="key"><i class="swatch" style="background:#18753c"></i>Réalisé / couvert</span><span class="key"><i class="swatch" style="background:#a66a00"></i>Programmé</span><span class="key"><i class="swatch" style="background:#b42318"></i>À réaliser</span>';return}
+  box.innerHTML=PALETTE.seq.map((c,i)=>`<span class="key"><i class="swatch" style="background:${c}"></i>${i===4?'Élevé':i===0?'Faible':'Intermédiaire'}</span>`).join('')
+}
+function deptBreaks(values){const v=values.map(Number).filter(x=>Number.isFinite(x)&&x>=0),mx=v.length?Math.max(...v):0;if(mx<=0)return[0,1,2,3,4];return[0,Math.max(1,Math.ceil(mx*.25)),Math.max(1,Math.ceil(mx*.5)),Math.max(1,Math.ceil(mx*.75)),mx]}
+function deptRealisedColor(v){if(v<=0)return DEPT_MAP_COLORS.real0;if(v===1)return DEPT_MAP_COLORS.real1;if(v===2)return DEPT_MAP_COLORS.real2;if(v===3)return DEPT_MAP_COLORS.real3;if(v===4)return DEPT_MAP_COLORS.real4;if(v===5)return DEPT_MAP_COLORS.real5;if(v===6)return DEPT_MAP_COLORS.real6;if(v===7)return DEPT_MAP_COLORS.real7;return DEPT_MAP_COLORS.real8}
+function deptPlanColor(v){if(v<=0)return DEPT_MAP_COLORS.grey;if(v===1)return DEPT_MAP_COLORS.plan1;if(v===2)return DEPT_MAP_COLORS.plan2;if(v===3)return DEPT_MAP_COLORS.plan3;if(v===4)return DEPT_MAP_COLORS.plan4;return DEPT_MAP_COLORS.plan5}
+function deptMapColor(v,theme,b){const C=DEPT_MAP_COLORS;if(!v)return C.grey;if(theme==='OBJECTIF'||theme==='OBJECTIF_QUANT'){if(v.value==='Atteint')return C.green;if(v.value==='Prévu')return C.orange;return C.red}if(theme==='PREVISION')return v.value==='Atteint'?C.green:C.red;if(theme==='RETARD')return number(v.value)===0?C.green:C.red;if(v.kind==='coverage')return coverageColor(v.value);const n=number(v.value);if(theme==='REALISES')return deptRealisedColor(Math.max(0,Math.round(n)));if(theme==='PLAN')return deptPlanColor(Math.max(0,Math.round(n)));if(n<=0)return C.grey;if(n<=b[1])return C.blue1;if(n<=b[2])return C.blue2;if(n<=b[3])return C.blue3;if(n<b[4])return C.blue4;return C.blue5}
+function deptMapLegend(id,theme,b){const C=DEPT_MAP_COLORS,box=$(id);if(theme==='OBJECTIF'||theme==='OBJECTIF_QUANT'){box.innerHTML=[[C.green,'Objectif atteint'],[C.orange,'Atteignable en prévision'],[C.red,'Objectif non atteint'],[C.grey,'Sans objectif / sans donnée']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('');return}if(theme==='PREVISION'){box.innerHTML=[[C.green,'Objectif prévisionnel atteint'],[C.red,'Objectif prévisionnel non atteint'],[C.grey,'Sans objectif / sans donnée']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('');return}if(theme==='RETARD'){box.innerHTML=[[C.green,'Aucun exercice en retard'],[C.red,'Au moins un exercice en retard'],[C.grey,'Sans donnée']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('');return}if(theme==='OBJECTIF_QUAL'||theme==='NAT'||theme==='POP'||theme==='CYB'||theme==='RUP'||(!['PREVISION','RETARD','REALISES','PROGRAMMES','PLAN','OBJECTIF','OBJECTIF_QUANT'].includes(theme))){box.innerHTML=[[C.green,'Réalisé'],[C.orange,'Programmé'],[C.red,'Non couvert'],[C.grey,'Aucun objectif / sans donnée']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('');return}if(theme==='REALISES'){box.innerHTML=[C.real0,C.real1,C.real2,C.real3,C.real4,C.real5,C.real6,C.real7,C.real8].map((c,i)=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+(i===8?'8 et +':String(i))+'</span>').join('');return}if(theme==='PLAN'){box.innerHTML=[[C.grey,'Aucune mise en œuvre'],[C.plan1,'1'],[C.plan2,'2'],[C.plan3,'3'],[C.plan4,'4'],[C.plan5,'5 et +']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('');return}box.innerHTML=[[C.grey,'0'],[C.blue1,'1 à '+b[1]],[C.blue2,(b[1]+1)+' à '+b[2]],[C.blue3,(b[2]+1)+' à '+b[3]],[C.blue4,(b[3]+1)+' à '+Math.max(b[3]+1,b[4]-1)],[C.blue5,b[4]+' et +']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('')}
+function deptValueLabel(v){if(!v)return'—';if(v.kind==='status')return fmt(v.n)+' / '+fmt(v.goal)+' réalisés';if(v.kind==='coverage')return text(v.value)||'Non renseigné';return fmt(v.value)}function deptTooltip(r,name,kind='dept'){if(!r)return'<strong>'+esc(name)+'</strong><br>Aucune donnée pour l’année sélectionnée.';const key=kind==='emiz'?'emizTheme':'deptTheme',v=categoryValue(r,S[key],kind),label=mapThemeLabel(S[key],kind);const detail=v.kind==='status'?fmt(v.n)+' / '+fmt(v.goal)+' réalisés · prévision '+fmt(v.forecast)+' / '+fmt(v.goal):v.kind==='coverage'?text(v.value)||'Non renseigné':fmt(v.value);return'<strong>'+esc(territoryName(r)||name)+'</strong><br>'+esc(label)+' : '+esc(detail)}function attachCardTooltip(target,html){
+  target.setAttribute('tabindex','0');target.setAttribute('aria-label',html.replace(/<[^>]*>/g,' '));
+  const tipId='floatingMapTooltip';
+  const tip=()=>{let el=$(tipId);if(!el){el=document.createElement('div');el.id=tipId;el.className='map-tip';el.setAttribute('role','tooltip');document.body.appendChild(el)}return el};
+  const place=(x,y)=>{const el=tip();el.style.left='0px';el.style.top='0px';el.innerHTML=html;el.style.display='block';const r=el.getBoundingClientRect();let left=x+14,top=y+14;if(left+r.width>innerWidth-8)left=x-r.width-14;if(top+r.height>innerHeight-8)top=y-r.height-14;el.style.left=Math.max(8,left)+'px';el.style.top=Math.max(8,top)+'px'};
+  target.addEventListener('mouseenter',e=>place(e.clientX,e.clientY));target.addEventListener('mousemove',e=>place(e.clientX,e.clientY));target.addEventListener('mouseleave',()=>{const el=$(tipId);if(el)el.style.display='none'});
+  target.addEventListener('focus',()=>{const r=target.getBoundingClientRect();place(r.left+r.width/2,r.top+r.height/2)});target.addEventListener('blur',()=>{const el=$(tipId);if(el)el.style.display='none'});
+}function drawDeptMap(){if(!S.deptMap||!S.deptGeo)return;if(S.deptTheme==='PLAN'&&!(S.planCountCache?.key===S.year+'|'+S.plan+'|'+S.bdd.length&&S.planCountCache.counts)){$('deptMapNote').textContent='Calcul des exercices avec plan…';ensurePlanCounts()}const rs=departments(),byCode=new Map(rs.map(r=>[codeOf(r),r]).filter(x=>x[0]));const values=rs.map(r=>categoryValue(r,S.deptTheme)).filter(v=>v.kind==='count').map(v=>number(v.value));const b=deptBreaks(values);if(S.deptLayer)S.deptLayer.remove();const overseasCodes=new Set(OVERSEAS_DEPARTMENTS.map(x=>x[0]));const features=S.deptGeo.features.filter(f=>!overseasCodes.has(depCodeFromFeature(f)));S.deptLayer=L.geoJSON({type:'FeatureCollection',features},{style:f=>{const r=byCode.get(depCodeFromFeature(f));return{color:'#fff',weight:1,fillOpacity:.88,fillColor:deptMapColor(r?categoryValue(r,S.deptTheme):null,S.deptTheme,b)}},onEachFeature:(f,l)=>{const name=regionName(f),r=byCode.get(depCodeFromFeature(f));l.bindTooltip(deptTooltip(r,name),{sticky:true})}}).addTo(S.deptMap);S.deptMap.fitBounds([[41.1,-5.4],[51.3,9.8]],{padding:[8,8]});deptMapLegend('deptLegend',S.deptTheme,b);$('deptMapNote').textContent=mapThemeLabel(S.deptTheme,'dept');$('planWrap').style.display=S.deptTheme==='PLAN'?'grid':'none';renderDeptOutlying()}function drawEmizMap(){if(!S.emizMap||!S.emizGeo)return;const rs=emizRows(),byZone=new Map(rs.map(r=>[zoneCode(r),r]).filter(x=>x[0]));const values=rs.map(r=>categoryValue(r,S.emizTheme,'emiz')).filter(v=>v.kind==='count').map(v=>number(v.value)),b=deptBreaks(values);if(S.emizLayer)S.emizLayer.remove();const features=buildEmizZoneFeatures().filter(f=>METRO_EMIZ_ZONES.includes(featureZone(f)));S.emizLayer=L.geoJSON({type:'FeatureCollection',features},{style:f=>{const r=byZone.get(featureZone(f)),v=r?categoryValue(r,S.emizTheme,'emiz'):null;return{color:'#fff',weight:1.6,fillOpacity:.88,fillColor:deptMapColor(v,S.emizTheme,b)}},onEachFeature:(f,l)=>{const z=featureZone(f),r=byZone.get(z);l.bindTooltip(deptTooltip(r,z,'emiz'),{sticky:true})}}).addTo(S.emizMap);S.emizMap.fitBounds([[41.1,-5.4],[51.3,9.8]],{padding:[8,8]});deptMapLegend('emizLegend',S.emizTheme,b);$('emizMapNote').textContent=mapThemeLabel(S.emizTheme,'emiz')+' · '+byZone.size+' zone(s) avec données';$('emizMap').title='INDICATEURS_NIVEAUX_V2 : '+rs.length+' ligne(s), '+byZone.size+' zone(s) reconnue(s)';renderEmizOutlying()}function renderDeptOutlying(){S.deptInsetMaps.forEach(m=>m.remove());S.deptInsetMaps=[];const host=$('deptOutlying'),data=departments(),byCode=new Map(data.map(r=>[codeOf(r),r]).filter(x=>x[0]));const ordered=OVERSEAS_DEPARTMENTS.map(([c,n])=>[c,n]).concat(data.filter(r=>/^9[78]/.test(codeOf(r))&&!OVERSEAS_DEPARTMENTS.some(x=>x[0]===codeOf(r))).map(r=>[codeOf(r),territoryName(r)]));const unique=[...new Map(ordered.map(x=>[x[0],x])).values()];const values=data.map(r=>categoryValue(r,S.deptTheme)).filter(v=>v.kind==='count').map(v=>number(v.value)),b=deptBreaks(values);host.innerHTML='';$('deptOutlyingCount').textContent='('+unique.length+' territoires)';unique.forEach(([c,label])=>{const r=byCode.get(c),feature=S.deptGeo.features.find(f=>depCodeFromFeature(f)===c),v=r?categoryValue(r,S.deptTheme):null,color=deptMapColor(v,S.deptTheme,b);if(feature){const el=document.createElement('div');el.className='dept-overseas-card';const id='dept-inset-'+c;el.innerHTML='<div class="dept-overseas-title">'+esc(label)+'</div><div class="dept-inset-map" id="'+id+'"></div>';host.appendChild(el);const im=L.map(id,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false});const layer=L.geoJSON(feature,{style:{color:'#fff',weight:1.2,fillOpacity:.9,fillColor:color}}).addTo(im);attachCardTooltip(el,deptTooltip(r,label,'dept'));im.fitBounds(layer.getBounds(),{padding:[5,5],maxZoom:8});S.deptInsetMaps.push(im)}else{const el=document.createElement('div');el.className='dept-overseas-card dept-overseas-data';el.innerHTML='<div class="dept-overseas-title">'+esc(label)+'</div><div class="dept-overseas-value" style="background:'+color+'">'+esc(deptValueLabel(v))+'</div>';host.appendChild(el);attachCardTooltip(el,deptTooltip(r,label,'dept'))}})}function renderEmizOutlying(){
+  S.emizInsetMaps.forEach(m=>m.remove());S.emizInsetMaps=[];
+  const host=$('emizOutlying'),mapZones=new Set(['ZD-ANTILLES','ZD-SUD-OCEAN-INDIEN']),names={'ZD-ANTILLES':'Antilles','ZD-SUD-OCEAN-INDIEN':'Sud Océan Indien'};
+  host.innerHTML='';
+  mapZones.forEach(code=>{
+    const feature=buildEmizZoneFeatures().find(f=>featureZone(f)===code);const features=feature?[feature]:[];if(!features.length)return;
+    const card=document.createElement('div');card.className='dept-overseas-card';const id='emiz-inset-'+code.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+    card.innerHTML='<div class="dept-overseas-title">'+esc(names[code])+'</div><div class="dept-inset-map" id="'+id+'"></div>';host.appendChild(card);
+    const r=zoneStatFor(code),v=r?categoryValue(r,S.emizTheme,'emiz'):null,values=emizRows().map(x=>categoryValue(x,S.emizTheme,'emiz')).filter(x=>x.kind==='count').map(x=>number(x.value)),b=deptBreaks(values),color=deptMapColor(v,S.emizTheme,b);
+    const im=L.map(id,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false});
+    const layer=L.geoJSON({type:'FeatureCollection',features},{style:{color:'#fff',weight:1.1,fillOpacity:.9,fillColor:color}}).addTo(im);attachCardTooltip(card,deptTooltip(r,names[code],'emiz'));
+    im.fitBounds(layer.getBounds(),{padding:[5,5],maxZoom:6});S.emizInsetMaps.push(im);
+  });
+  const excluded=new Set(['ZD-GUYANE','ZD-CALEDONIE','ZD-POLYNESIE']);ZONE_OUTLYING.filter(([code])=>!mapZones.has(code)&&!excluded.has(code)).forEach(([code,name])=>{const r=zoneStatFor(code);if(!r)return;const v=categoryValue(r,S.emizTheme,'emiz'),el=document.createElement('span');el.className='external-card';el.textContent=name+' · '+(v.kind==='coverage'?text(v.value):v.kind==='status'?deptValueLabel(v):fmt(v.value));host.appendChild(el);attachCardTooltip(el,deptTooltip(r,name,'emiz'))});$('emizOutlyingCount').textContent='('+host.children.length+' zones)';
+}
+function renderGoals(){const ds=departments().map(r=>stat(r));const da=ds.filter(s=>s.real>=s.goal).length;const zones=emizRows().map(r=>stat(r,'emiz'));const achieved=zones.filter(s=>s.real>=s.goal).length;$('goals').innerHTML=ring('Départements et collectivités',da,ds.length)+ring('EMIZ — activité propre',achieved,zones.length)}
+function renderNational(){const r=nationalRow(),all=departments().map(x=>stat(x));const real=r?number(cell(r,['Nb_Exercices_Realises','Nb_Realise'])):all.reduce((s,x)=>s+x.real,0);const planned=r?number(cell(r,['Nb_Exercices_Programmes','Nb_Programme'])):all.reduce((s,x)=>s+x.planned,0);const late=r?number(cell(r,['Nb_Exercices_En_Retard','Nb_Programme_En_Retard'])):all.reduce((s,x)=>s+x.late,0);const fcast=r?number(cell(r,['Pct_Departements_Prevision_Atteinte'])):pct(all.filter(x=>x.forecast>=x.goal).length,all.length);$('nationalMetrics').innerHTML=metric('Exercices réalisés',fmt(real))+metric('Exercices programmés',fmt(planned))+metric('Atteinte prévisionnelle',fcast+' %')+metric('Exercices en retard',fmt(late));const ex=orgExercises().filter(x=>territoryClass(x)==='dept');$('nationalRisks').innerHTML=barRows(grouped(ex,riskType));$('coverage').innerHTML=barRows([['NAT',number(cell(r,['Pct_Couverture_NAT']))],['POP',number(cell(r,['Pct_Couverture_POP']))],['CYB',number(cell(r,['Pct_Couverture_CYB']))],['RUP',number(cell(r,['Pct_Couverture_RUP']))]].map(([n,v])=>[n,v<=1.5?Math.round(v*100):Math.round(v)]))}
+function renderDepartments(){const d=departments().map(r=>({r,s:stat(r)}));const sums=d.reduce((a,x)=>({real:a.real+x.s.real,planned:a.planned+x.s.planned,late:a.late+x.s.late,forecast:a.forecast+x.s.forecast}),{real:0,planned:0,late:0,forecast:0});const reached=d.filter(x=>x.s.real>=x.s.goal).length,expected=d.filter(x=>x.s.forecast>=x.s.goal).length;$('deptMetrics').innerHTML=metric('Exercices réalisés',fmt(sums.real))+metric('Exercices programmés',fmt(sums.planned))+metric('Départements ayant atteint l’objectif',`${fmt(reached)} / ${fmt(d.length)} (${pct(reached,d.length)} %)`)+metric('Prévision d’atteinte',`${fmt(expected)} / ${fmt(d.length)} (${pct(expected,d.length)} %)`);const ex=orgExercises().filter(x=>territoryClass(x)==='dept');$('deptTypes').innerHTML=barRows(grouped(ex,exerciseType));$('deptRisks').innerHTML=barRows(grouped(ex,riskType));const doPlayed=ex.filter(x=>{const v=cell(x,['DO joué','DO_joue','DO joue']);return yes(v)||['joue','dojoue'].includes(norm(text(v)))});$('deptActors').innerHTML=metric('Exercices avec DO joué',fmt(doPlayed.length),pct(doPlayed.length,ex.length)+' % des exercices départementaux')+'<div class="subheading">Personne ayant joué le DO</div>'+barRows(groupedFieldValuesByExercise(doPlayed,['qui DO','Qui_DO','Qui DO']));const alerts=ex.filter(x=>yes(cell(x,['Alerte_de_la_population','Alerte population','Alerte à la population']))).length;const involved=ex.filter(x=>yes(cell(x,['Population_impliquee','Population impliquée','Population impliquee']))).length;const schoolExercises=ex.filter(x=>yes(cell(x,['scolaires','scolaire']))).length;const cipExercises=ex.filter(x=>yes(cell(x,['CIP']))).length;$('deptPublic').innerHTML=`<div class="table-wrap"><table class="table"><thead><tr><th>Indicateur</th><th class="num">Nombre</th><th class="num">Part des exercices</th></tr></thead><tbody><tr><td>Exercices avec alerte à la population</td><td class="num">${fmt(alerts)}</td><td class="num">${pct(alerts,ex.length)} %</td></tr><tr><td>Exercices avec participation de la population</td><td class="num">${fmt(involved)}</td><td class="num">${pct(involved,ex.length)} %</td></tr><tr><td>Exercices impliquant des scolaires</td><td class="num">${fmt(schoolExercises)}</td><td class="num">${pct(schoolExercises,ex.length)} %</td></tr><tr><td>Exercices avec activation du CIP</td><td class="num">${fmt(cipExercises)}</td><td class="num">${pct(cipExercises,ex.length)} %</td></tr>${alertChannelRows(ex)}</tbody></table></div>`;const planExerciseRows=yearRows(S.bdd);const pcsCount=planExerciseRows.filter(x=>planTypesImplemented(x).includes('PCS')).length,picsCount=planExerciseRows.filter(x=>planTypesImplemented(x).includes('PICS')).length;$('deptPlans').innerHTML='<div class="subheading">PCS et PICS mis en œuvre sur l’année</div><div class="metrics">'+metric('PCS mis en œuvre',fmt(pcsCount))+metric('PICS mis en œuvre',fmt(picsCount))+'</div><div class="subheading" style="margin-top:10px">Autres plans activés à titre dominant</div>'+limitedBarRows(grouped(ex,planName).filter(([n])=>n!=='Non renseigné'),10)}
+function emizGroups(){const own=orgExercises().filter(x=>!isExcludedEmizZone(x)&&territoryClass(x)==='emiz');return{own}}
+function renderEmiz(){const es=emizRows().map(r=>({r,s:stat(r,'emiz')}));const derived=es.reduce((a,x)=>({real:a.real+x.s.real,planned:a.planned+x.s.planned,late:a.late+x.s.late}),{real:0,planned:0,late:0});const own=derived;const total=es.length;const achieved=es.filter(x=>x.s.real>=x.s.goal).length;const forecast=es.filter(x=>x.s.forecast>=x.s.goal).length;$('emizMetrics').innerHTML=metric('Exercices zonaux réalisés',fmt(own.real))+metric('Exercices zonaux programmés',fmt(own.planned))+metric('EMIZ ayant atteint l’objectif',`${achieved} / ${total} (${pct(achieved,total)} %)`)+metric('Prévision d’atteinte',`${forecast} / ${total} (${pct(forecast,total)} %)`)+metric('Exercices zonaux en retard',fmt(own.late));const g=emizGroups();$('emizTypes').innerHTML=barRows(grouped(g.own,exerciseType));$('emizRisks').innerHTML=barRows(grouped(g.own,riskType));$('emizPlans').innerHTML=barRows(grouped(g.own,planName).filter(([n])=>n!=='Non renseigné'));renderEmizByZone(es,g)}
+function renderEmizByZone(stats,groups){const zones=[...new Set([...stats.map(x=>zoneCode(x.r)),...groups.own.map(zoneOf)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));if(!zones.length){$('emizByZone').innerHTML='<div class="empty">Aucune donnée zonale pour cette année.</div>';return}const detail=(label,rows,field)=>`<div class="subheading">${label}</div>${barRows(grouped(rows,field))}`;$('emizByZone').innerHTML=zones.map(zone=>{const sr=stats.find(x=>norm(zoneCode(x.r))===norm(zone));const own=groups.own.filter(x=>norm(zoneOf(x))===norm(zone));const st=sr?.s||{real:0,planned:0,forecast:0,goal:2,late:0};return`<details><summary>${esc(zone)} — ${fmt(st.real)} exercice(s) réalisé(s) au niveau zonal</summary><div class="inside"><div class="metrics">${metric('Activité zonale',fmt(st.real)+' réalisé(s)',fmt(st.planned)+' programmé(s) · '+fmt(st.late)+' en retard')}${metric('Objectif EMIZ',fmt(st.goal)+' exercice(s)',`${st.real>=st.goal?'Atteint':st.forecast>=st.goal?'Prévu':'À atteindre'} · prévision ${fmt(st.forecast)}`)}</div>${detail('Types d’exercices',own,exerciseType)}${detail('Risques recensés',own,riskType)}${detail('Plans activés à titre dominant',own.filter(x=>planName(x)!=='Non renseigné'),planName)}</div></details>`}).join('')}
+function renderFinance(){
+  const source=yearRows(S.finance);
+  const zoneList=[...METRO_EMIZ_ZONES,'ZD-ANTILLES','ZD-SUD-OCEAN-INDIEN'];
+  const zoneLabels={'ZD-PARIS':'ZD-PARIS','ZD-NORD':'ZD-NORD','ZD-OUEST':'ZD-OUEST','ZD-EST':'ZD-EST','ZD-SUD-OUEST':'ZD-SUD-OUEST','ZD-SUD-EST':'ZD-SUD-EST','ZD-SUD':'ZD-SUD','ZD-ANTILLES':'ZD-ANTILLES','ZD-SUD-OCEAN-INDIEN':'ZD-SUD-OCEAN-INDIEN'};
+  const communities=[['GUYANE','Guyane'],['POLYNESIE','Polynésie'],['SAINT-PIERRE-ET-MIQUELON','Saint-Pierre-et-Miquelon'],['CALEDONIE','Nouvelle-Calédonie']];
+  const communityNeedles={'GUYANE':['guyane'],'POLYNESIE':['polynesie'],'SAINT-PIERRE-ET-MIQUELON':['saintpierreetmiquelon','spm'],'CALEDONIE':['nouvellecaledonie','caledonie']};
+  const keyFor=r=>{
+    const z=zoneCode(r);
+    if(zoneList.includes(z))return z;
+    const hay=norm([text(cell(r,['Zone'])),text(cell(r,['Niveau_administratif','Territoire','Collectivite','Collectivité'])),text(cell(r,['Cle_Annee_Zone','Cle_Annee_Niveau']))].join(' '));
+    for(const [key] of communities)if(communityNeedles[key].some(n=>hay.includes(n)))return key;
+    return '';
+  };
+  const groupedRows=new Map();
+  source.forEach(r=>{const key=keyFor(r);if(!key)return;if(!groupedRows.has(key))groupedRows.set(key,[]);groupedRows.get(key).push(r)});
+  const makeRow=(key,label)=>{const rs=groupedRows.get(key)||[];return{key,label,asked:rs.reduce((a,r)=>a+number(cell(r,['Total_Demande'])),0),received:rs.reduce((a,r)=>a+number(cell(r,['Total_Recu'])),0),pending:rs.reduce((a,r)=>a+number(cell(r,['Nb_Sans_MAJ'])),0),amount:rs.reduce((a,r)=>a+number(cell(r,['Montant_Sans_MAJ'])),0)}};
+  const zones=zoneList.map(k=>makeRow(k,zoneLabels[k]));
+  const outlying=communities.map(([k,label])=>makeRow(k,label));
+  // La synthèse reste générale et reprend l'ensemble des lignes financières de l'année.
+  const total=source.reduce((a,r)=>({asked:a.asked+number(cell(r,['Total_Demande'])),received:a.received+number(cell(r,['Total_Recu'])),pending:a.pending+number(cell(r,['Nb_Sans_MAJ'])),amount:a.amount+number(cell(r,['Montant_Sans_MAJ']))}),{asked:0,received:0,pending:0,amount:0});
+  $('financeMetrics').innerHTML=metric('Financement demandé',euro(total.asked))+metric('Financement reçu renseigné',euro(total.received))+metric('Taux reçu / demandé',pct(total.received,total.asked)+' %')+metric('Demandes sans mise à jour',fmt(total.pending),euro(total.amount)+' concernés');
+  const groupRow=label=>'<tr><td colspan="5" style="font-weight:700;color:#000091;background:#e8eef8;border-top:2px solid #9aaac0;padding:8px 7px">'+esc(label)+'</td></tr>';
+  const renderRow=r=>'<tr><td>'+esc(r.label)+'</td><td class="num">'+euro(r.asked)+'</td><td class="num">'+euro(r.received)+'</td><td class="num">'+pct(r.received,r.asked)+' %</td><td class="num">'+fmt(r.pending)+'</td></tr>';
+  $('financeRows').innerHTML=groupRow('Zones')+zones.map(renderRow).join('')+groupRow('Collectivités ultramarines sans zone')+outlying.map(renderRow).join('');
+}
+function renderAll(){renderGoals();renderDepartments();renderEmiz();renderFinance();$('selectionLabel').textContent='Année '+S.year;drawDeptMap();drawEmizMap();window.renderUnifiedDetails?.()}
+function fillSelectors(){const ys=[...new Set([...S.ind,...S.emiz,...S.carteEmiz,...S.bdd,...S.objectives].map(yearOf).filter(y=>/^20\d{2}$/.test(y)))].sort((a,b)=>b-a);S.years=ys;const choiceYearId=refId(cell(S.choiceYear[0],['Annee','Année'])),choiceYear=S.yearMap.get(choiceYearId)||'';if(!ys.includes(S.year))S.year=ys.includes(choiceYear)?choiceYear:(ys.includes('2026')?'2026':ys[0]||'');$('year').innerHTML=ys.map(y=>'<option value="'+esc(y)+'" '+(y===S.year?'selected':'')+'>'+esc(y)+'</option>').join('');for(const [id,kind,key]of [['deptTheme','dept','deptTheme'],['emizTheme','emiz','emizTheme']]){const items=themeItems(kind),current=S[key];$(id).innerHTML=mapSelectorOptions(kind,current);S[key]=items.some(x=>x.value===current)?current:(items[0]?.value||'OBJECTIF_QUANT');$(id).value=S[key]}S.planById=new Map(S.plansCatalog.map(r=>[r.id,text(cell(r,['Libelle','Libellé','Plan','Nom']))]).filter(([id,label])=>id!=null&&label));const plans=(S.plansCatalog.length?S.plansCatalog.map(r=>text(cell(r,['Libelle','Libellé','Plan','Nom']))).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr')):[...new Set(orgExercises().flatMap(exercisePlanLabels))].sort((a,b)=>a.localeCompare(b,'fr')));if(!plans.includes(S.plan))S.plan=plans[0]||'';$('planSelect').innerHTML=plans.map(p=>'<option value="'+esc(p)+'" '+(p===S.plan?'selected':'')+'>'+esc(p)+'</option>').join('')||'<option value="">Aucun plan renseigné</option>'}async function timed(p,label,ms=30000){let timer;try{return await Promise.race([p,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Délai dépassé pendant la lecture de '+label)),ms)})])}finally{clearTimeout(timer)}}
+async function fetchTables(){
+ $('updated').textContent='Connexion au classeur Grist…';
+ const available=await timed(grist.docApi.listTables(),'liste des tables',15000);
+ const actual={};
+ for(const [key,wanted] of Object.entries(TABLES)){const found=available.find(n=>String(n).toLowerCase()===wanted.toLowerCase());if(!found)throw new Error('Table absente du classeur : '+wanted);actual[key]=found}
+ const data={},entries=Object.entries(actual);
+ for(let i=0;i<entries.length;i++){const [key,name]=entries[i];$('updated').textContent='Lecture Grist : '+name+' ('+(i+1)+'/'+entries.length+')';data[TABLES[key]]=rows(await timed(grist.docApi.fetchTable(name),'table '+name))}
+ S.yearMap=new Map(data[TABLES.years].map(r=>[r.id,String(cell(r,['Annee','Année']))]));S.admins=data[TABLES.admins];S.adminById=new Map(S.admins.map(r=>[r.id,r]));S.ind=data[TABLES.ind];S.emiz=data[TABLES.emiz];S.carteEmiz=data[TABLES.carteEmiz];S.bdd=data[TABLES.bdd];S.finance=data[TABLES.finance];S.objectives=data[TABLES.objectives];S.deptThemes=data[TABLES.deptThemes];S.emizThemes=data[TABLES.emizThemes];S.plansCatalog=data[TABLES.plans];S.choiceYear=data[TABLES.choiceYear];S.planCountCache=null;S.exerciseCountCache=null;fillSelectors();renderAll();const summaryRow=emizSummary();const emizMap=emizRows();const mapZones=new Set(emizMap.map(zoneCode).filter(Boolean));$('updated').textContent='Grist · '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+' · EMIZ objectif '+(summaryRow?'ligne trouvée':'absent')+' · carte '+mapZones.size+' zone(s) / '+emizMap.length+' ligne(s)';$('updated').title='STATISTIQUES_GENERALE_EMIZ : '+S.emiz.length+' ligne(s), '+S.emiz.filter(isSelected).length+' sélectionnée(s). INDICATEURS_NIVEAUX_V2 EMIZ : '+emizRows().length+' ligne(s), '+new Set(emizRows().map(zoneCode).filter(Boolean)).size+' zone(s). CARTE_EMIZ : '+S.carteEmiz.length+' ligne(s) chargée(s) pour diagnostic.';$('updated').classList.remove('error');$('error').style.display='none'
+}
+async function loadGeo(url,key){try{const r=await fetch(url);if(!r.ok)throw Error('Réponse HTTP '+r.status);const j=await r.json();if(key==='dept'){S.deptGeo=j;S.deptMap=L.map('deptMap',{zoomControl:false,attributionControl:true,scrollWheelZoom:false}).setView([46.6,2.4],5);S.deptMap.attributionControl.addAttribution('Contours : IGN / INSEE · GeoJSON gregoiredavid');drawDeptMap()}else{S.emizGeo=j;S.emizMap=L.map('emizMap',{zoomControl:false,attributionControl:true,scrollWheelZoom:false}).setView([46.6,2.4],5);S.emizMap.attributionControl.addAttribution('Contours : IGN / INSEE · GeoJSON gregoiredavid');drawEmizMap()}}catch(e){$(key==='dept'?'deptMap':'emizMap').innerHTML='<div class="empty">Carte indisponible : '+esc(e.message)+'</div>'}}
+async function syncYearChoice(year){
+  const entry=[...S.yearMap.entries()].find(([,label])=>String(label)===String(year));
+  if(!entry)throw new Error('Année introuvable dans la table de référence');
+  const [rowId]=entry,table=TABLES.choiceYear,existing=S.choiceYear[0];
+  if(existing&&refId(cell(existing,['Annee','Année']))===rowId)return;
+  $('updated').textContent='Mise à jour du sélecteur d’année Grist…';
+  const action=existing?['UpdateRecord',table,existing.id,{Annee:Number(rowId)}]:['AddRecord',table,null,{Annee:Number(rowId)}];
+  await timed(grist.docApi.applyUserActions([action]),'mise à jour du sélecteur d’année');
+  await new Promise(resolve=>setTimeout(resolve,350));
+  await refresh();
+}
+async function refresh(){try{await fetchTables()}catch(e){$('error').style.display='block';$('error').textContent='Lecture Grist impossible : '+(e?.message||e);$('updated').textContent='Erreur de chargement';$('updated').classList.add('error')}}
+$('year').addEventListener('change',()=>{S.year=$('year').value;S.planCountCache=null;S.exerciseCountCache=null;fillSelectors();renderAll()});$('deptOutlyingPanel').addEventListener('toggle',e=>{if(e.currentTarget.open)requestAnimationFrame(()=>S.deptInsetMaps.forEach(m=>m.invalidateSize({pan:false})))});$('emizOutlyingPanel').addEventListener('toggle',e=>{if(e.currentTarget.open)requestAnimationFrame(()=>S.emizInsetMaps.forEach(m=>m.invalidateSize({pan:false})))});$('deptTheme').addEventListener('change',()=>{S.deptTheme=$('deptTheme').value;drawDeptMap()});$('emizTheme').addEventListener('change',()=>{S.emizTheme=$('emizTheme').value;drawEmizMap()});$('planSelect').addEventListener('change',()=>{S.plan=$('planSelect').value;drawDeptMap()});
+function startupFailure(e){const message=e?.message||String(e);$('error').style.display='block';$('error').textContent='Initialisation Grist impossible : '+message;$('updated').textContent='Erreur de connexion Grist';$('updated').classList.add('error')}
+try{if(!window.grist||!grist.docApi)throw new Error('API Grist absente. Ouvrez cette page dans un widget personnalisé intégré à un document Grist.');$('updated').textContent='Initialisation de la connexion Grist…';const ready=grist.ready({requiredAccess:'full'});Promise.all([loadGeo(GEO.dept,'dept'),loadGeo(GEO.emiz,'emiz')]);if(ready&&typeof ready.then==='function')ready.then(()=>setTimeout(refresh,300)).catch(startupFailure);else setTimeout(refresh,300);/* Rechargement périodique désactivé : une lecture par ouverture de vue. */}catch(e){startupFailure(e)}
+</script>
+<script>
+
+'use strict';
+let unifiedPage='general', detailDepartmentKey='',detailZoneCode='',departmentExtras=[],zoneManualRows=[];
+const detailLoaded={department:false,zone:false},detailLoading={department:null,zone:null};
+const detailSelect=(el,items,key)=>{if(!items.some(x=>x.key===key))key=items[0]?.key||'';el.innerHTML=items.map(x=>'<option value="'+esc(x.key)+'"'+(x.key===key?' selected':'')+'>'+esc(x.label)+'</option>').join('');return key};
+const totalBar=(label,items)=>'<div class="subheading">'+esc(label)+'</div>'+barRows(items);
+function financeAmount(v){if(v==null||v==='')return 0;if(typeof v==='number')return v;return Number(String(v).replace(/\s|\u00a0|€/g,'').replace(',','.'))||0}
+async function showUnifiedPage(page){
+ if(!['general','department','zone'].includes(page))return;
+ unifiedPage=page;
+ for(const name of ['general','department','zone']){
+   $('view'+name[0].toUpperCase()+name.slice(1)).hidden=name!==page;
+   const tab=$('tab'+name[0].toUpperCase()+name.slice(1));
+   tab.classList.toggle('active',name===page);
+   if(name===page)tab.setAttribute('aria-current','page');else tab.removeAttribute('aria-current');
+ }
+ if(page==='general'){requestAnimationFrame(()=>{S.deptMap?.invalidateSize({pan:false});S.emizMap?.invalidateSize({pan:false})});return}
+ try{
+   if(!detailLoaded[page]){
+     if(!detailLoading[page])detailLoading[page]=(async()=>{
+       const table=page==='department'?'HTML_OBJECTIFS_DEPARTEMENT':'STATISTIQUES_EMIZ';
+       const result=await timed(grist.docApi.fetchTable(table),'données de la vue '+page);
+       if(page==='department')departmentExtras=rows(result);else zoneManualRows=rows(result);
+       detailLoaded[page]=true;
+     })().finally(()=>{detailLoading[page]=null});
+     await detailLoading[page];
+   }
+ }catch(error){
+   const target=$(page==='department'?'detailDeptThemes':'detailZoneManual');
+   target.innerHTML='<div class="empty">Complément indisponible : '+esc(error?.message||error)+'</div>';
+ }
+ renderUnifiedDetails();
+}
+function renderUnifiedDetails(){
+ if(!S.ind.length||unifiedPage==='general')return;
+ if(unifiedPage==='department')renderDepartmentDetail();
+ if(unifiedPage==='zone')renderZoneDetail();
+}
+function renderDepartmentDetail(){
+ const choices=departments().map(r=>({key:territoryKey(r),label:territoryName(r)})).sort((a,b)=>a.label.localeCompare(b.label,'fr',{numeric:true}));
+ detailDepartmentKey=detailSelect($('detailDepartment'),choices,detailDepartmentKey);
+ const r=departments().find(x=>territoryKey(x)===detailDepartmentKey);
+ if(!r)return;
+ const data=stat(r),ex=orgExercises().filter(x=>territoryKey(x)===detailDepartmentKey);
+ $('detailDeptMetrics').innerHTML=metric('Exercices réalisés',fmt(data.real))+metric('Programmés',fmt(data.planned))+metric('Annulés',fmt(data.cancel))+metric('En retard',fmt(data.late))+metric('Objectif annuel',fmt(data.goal))+metric('Atteinte',pct(data.real,data.goal)+' %');
+ $('detailDeptForecast').textContent='Prévision : '+fmt(data.forecast)+' / '+fmt(data.goal)+' · '+(data.real>=data.goal?'Objectif atteint':data.forecast>=data.goal?'Objectif prévu atteint':'Objectif à atteindre');
+ const key=text(cell(r,['Cle_Annee_Niveau'])),objective=departmentExtras.find(x=>text(cell(x,['Cle_Annee_Niveau']))===key);
+ const html=cell(objective,['HTML_Objectifs']);
+ $('detailDeptThemes').innerHTML=html?String(html):['NAT','POP','CYB','RUP'].map(code=>'<div class="barline"><span>'+code+'</span><span>'+esc(text(cell(r,['Couverture_'+code]))||'Non renseigné')+'</span></div>').join('');
+ const states=['Réalisé','Programmé','Annulé'];
+ const labels=[...new Set(ex.map(riskType))].sort((a,b)=>a.localeCompare(b,'fr'));
+ $('detailDeptRisks').innerHTML=labels.length?labels.map(label=>{
+   const group=ex.filter(x=>riskType(x)===label);
+   return '<details><summary>'+esc(label)+' · '+fmt(group.length)+' exercice(s)</summary><div class="inside">'+
+    states.map(st=>'<div class="barline"><span>'+st+'</span><div class="bar"><i style="width:'+pct(group.filter(x=>norm(text(cell(x,['Etat','État'])))===norm(st)).length,group.length)+'%"></i></div><b>'+fmt(group.filter(x=>norm(text(cell(x,['Etat','État'])))===norm(st)).length)+'</b></div>').join('')+
+    totalBar('Risques',grouped(group,riskName))+'</div></details>';
+ }).join(''):'<div class="empty">Aucun exercice organisé pour cette sélection.</div>';
+ const count=names=>ex.filter(x=>yes(cell(x,names))).length;
+ $('detailDeptAlerts').innerHTML='<div class="metrics">'+metric('Alerte à la population',fmt(count(['Alerte de la population','Alerte_de_la_population'])))+
+ metric('FR-Alert',fmt(count(['FR-Alert','Utilisation FR ALERT'])))+metric('Sirènes SAIP',fmt(count(['sirenes SAIP','sirènes SAIP'])))+
+ metric('Alerte radio',fmt(count(['radios conventionnées','Alerte radio'])))+metric('Scolaires',fmt(count(['scolaires','scolaire'])))+
+ metric('CIP',fmt(count(['CIP'])))+'</div>';
+ const moneyRows=yearRows(S.bdd).filter(x=>territoryKey(x)===detailDepartmentKey);
+ const asked=moneyRows.reduce((n,x)=>n+financeAmount(cell(x,['Financement_demande','Financement demandé'])),0);
+ const received=moneyRows.reduce((n,x)=>n+financeAmount(cell(x,['Financement_recu','Financement reçu'])),0);
+ const pending=moneyRows.filter(x=>financeAmount(cell(x,['Financement_demande','Financement demandé']))>0&&cell(x,['Financement_recu','Financement reçu'])==null).length;
+ $('detailDeptFinance').innerHTML='<div class="metrics">'+metric('Demandé',euro(asked))+metric('Reçu renseigné',euro(received))+metric('Taux reçu',asked?pct(received,asked)+' %':'—')+metric('Demandes sans mise à jour',fmt(pending))+'</div>';
+ const comments=[...new Set(moneyRows.map(x=>text(cell(x,['Commentaire_financement','Commentaire financement']))).filter(Boolean))];
+ if(comments.length)$('detailDeptFinance').innerHTML+='<div class="subheading">Commentaires</div><ul>'+comments.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>';
+}
+function renderZoneDetail(){
+ const choices=emizRows().map(r=>({key:zoneCode(r),label:territoryName(r)})).filter(x=>x.key).sort((a,b)=>a.label.localeCompare(b.label,'fr'));
+ detailZoneCode=detailSelect($('detailZone'),choices,detailZoneCode);
+ const r=emizRows().find(x=>zoneCode(x)===detailZoneCode);
+ if(!r)return;
+ const data=stat(r,'emiz'),ds=departments().filter(x=>zoneCode(x)===detailZoneCode),own=orgExercises().filter(x=>territoryClass(x)==='emiz'&&zoneCode(x)===detailZoneCode);
+ const reached=ds.filter(x=>stat(x).real>=stat(x).goal).length,atRisk=ds.filter(x=>stat(x).forecast<stat(x).goal).length,departmentLate=ds.reduce((sum,x)=>sum+stat(x).late,0);
+ $('detailZoneMetrics').innerHTML=metric('Exercices zonaux réalisés',fmt(data.real))+metric('Programmés',fmt(data.planned))+metric('Annulés',fmt(data.cancel))+metric('En retard',fmt(data.late))+metric('Objectif EMIZ',fmt(data.goal))+metric('Départements à l’objectif',fmt(reached)+' / '+fmt(ds.length));
+ $('detailZoneWatch').textContent=atRisk+' département(s) sous l’objectif prévisionnel · '+fmt(departmentLate)+' exercice(s) départemental(aux) en retard.';
+ const sorted=ds.map(x=>({r:x,s:stat(x)})).sort((a,b)=>a.s.forecast>=a.s.goal?1:-1);
+ $('detailZoneDepartments').innerHTML='<div class="table-wrap"><table class="table"><thead><tr><th>Département</th><th class="num">Réalisés</th><th class="num">Programmés</th><th class="num">Objectif</th><th>Situation</th></tr></thead><tbody>'+
+ sorted.map(({r,s})=>'<tr><td>'+esc(territoryName(r))+'</td><td class="num">'+fmt(s.real)+'</td><td class="num">'+fmt(s.planned)+'</td><td class="num">'+fmt(s.goal)+'</td><td>'+esc(s.real>=s.goal?'Atteint':s.forecast>=s.goal?'Prévu':'À atteindre')+'</td></tr>').join('')+'</tbody></table></div>';
+ $('detailZoneThemes').innerHTML=['NAT','POP','CYB','RUP'].map(code=>{
+   const statuses=ds.map(x=>norm(text(cell(x,['Couverture_'+code])))).filter(x=>x&&!x.includes('aucunobjectif')&&!x.includes('nonconcerne'));
+   const done=statuses.filter(x=>!x.includes('non')&&(x.includes('couvert')||x.includes('realise')||x.includes('atteint'))).length;
+   return metric('Couverture '+code,fmt(done)+' / '+fmt(statuses.length));
+ }).join('');
+ const deptKeys=new Set(ds.map(territoryKey)),deptEx=orgExercises().filter(x=>deptKeys.has(territoryKey(x)));
+ $('detailZoneRisks').innerHTML=totalBar('Exercices propres à l’EMIZ',grouped(own,riskType))+totalBar('Exercices des départements',grouped(deptEx,riskType));
+ const fr=yearRows(S.finance).find(x=>zoneCode(x)===detailZoneCode);
+ if(fr){
+   const v=names=>financeAmount(cell(fr,names)),asked=v(['Total_Demande']),received=v(['Total_Recu']);
+   $('detailZoneFinance').innerHTML='<div class="metrics">'+metric('Demandé',euro(asked))+metric('Reçu renseigné',euro(received))+metric('Taux reçu',asked?pct(received,asked)+' %':'—')+metric('Demandes sans mise à jour',fmt(v(['Nb_Sans_MAJ'])))+'</div>'+
+   '<div class="table-wrap"><table class="table"><thead><tr><th>Origine</th><th class="num">Demandé</th><th class="num">Reçu</th></tr></thead><tbody>'+
+   '<tr><td>Départements</td><td class="num">'+euro(v(['Demande_Departements']))+'</td><td class="num">'+euro(v(['Recu_Departements']))+'</td></tr>'+
+   '<tr><td>Activité propre EMIZ</td><td class="num">'+euro(v(['Demande_Propre_EMIZ']))+'</td><td class="num">'+euro(v(['Recu_Propre_EMIZ']))+'</td></tr></tbody></table></div>';
+ }else $('detailZoneFinance').innerHTML='<div class="empty">Aucune donnée financière pour cette sélection.</div>';
+ renderZoneManual();
+}
+function renderZoneManual(){
+ const key=S.year+'|'+detailZoneCode,root=$('detailZoneManual'),r=zoneManualRows.find(x=>text(cell(x,['Cle_Annee_Zone2']))===key);
+ if(!detailLoaded.zone){root.innerHTML='<div class="empty">Validation indisponible.</div>';return}
+ if(!r){root.innerHTML='<div class="empty">Aucune ligne annuelle de validation pour cette zone.</div>';return}
+ root.innerHTML=['INTERDEP','PROJ_INS'].map(code=>{
+   if(text(cell(r,['Couverture_'+code]))==='Aucun objectif fixé')return '<div>'+code+' : aucun objectif fixé pour cette année.</div>';
+   const value=text(cell(r,['Validation_'+code])),why=text(cell(r,['Justification_'+code])),date=text(cell(r,['Date_validation_'+code]));
+   return '<div data-validation="'+code+'"><label>'+code+'<select data-status="'+code+'">'+[['','À valider'],['Réalisé','Réalisé'],['Non réalisé','Non réalisé'],['Sans objet','Sans objet']].map(([v,l])=>'<option value="'+esc(v)+'"'+(v===value?' selected':'')+'>'+l+'</option>').join('')+'</select></label><label>Justification<textarea data-reason="'+code+'>'+esc(why)+'</textarea></label><small>Dernière validation : '+esc(date||'—')+'</small><br><button type="button" data-save="'+code+'">Enregistrer '+code+'</button></div>';
+ }).join('');
+ root.querySelectorAll('[data-save]').forEach(button=>button.onclick=()=>saveZoneValidation(button,r,key));
+}
+async function saveZoneValidation(button,previous,key){
+ const code=button.dataset.save,section=button.closest('[data-validation]'),status=section.querySelector('[data-status]').value,reason=section.querySelector('[data-reason]').value.trim(),feedback=$('detailZoneFeedback');
+ if(status&&!reason){feedback.textContent='Renseignez une justification avant de valider.';return}
+ button.disabled=true;
+ try{
+   const latest=rows(await grist.docApi.fetchTable('STATISTIQUES_EMIZ')).filter(x=>text(cell(x,['Cle_Annee_Zone2']))===key);
+   if(latest.length!==1)throw new Error('La clé année/zone doit identifier une seule ligne.');
+   const old=latest[0],field='Validation_'+code,why='Justification_'+code,date='Date_validation_'+code;
+   if(text(cell(old,[field]))!==text(cell(previous,[field]))||text(cell(old,[why]))!==text(cell(previous,[why])))throw new Error('Cette validation a été modifiée depuis son affichage.');
+   const fields={};fields[field]=status;fields[why]=reason;fields[date]=status?new Date().toISOString():'';
+   await grist.docApi.applyUserActions([['UpdateRecord','STATISTIQUES_EMIZ',old.id,fields]]);
+   Object.assign(previous,fields);
+   feedback.textContent='Validation '+code+' enregistrée.';
+   renderZoneManual();
+ }catch(e){feedback.textContent='Enregistrement impossible : '+(e?.message||e)}
+ finally{button.disabled=false}
+}
+document.querySelectorAll('.stat-nav [data-view]').forEach(button=>button.addEventListener('click',()=>showUnifiedPage(button.dataset.view)));
+$('detailDepartment').addEventListener('change',()=>{detailDepartmentKey=$('detailDepartment').value;renderUnifiedDetails()});
+$('detailZone').addEventListener('change',()=>{detailZoneCode=$('detailZone').value;$('detailZoneFeedback').textContent='';renderUnifiedDetails()});
+window.renderUnifiedDetails=renderUnifiedDetails;
+
+</script>
+</body>
+</html>
