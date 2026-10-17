@@ -1,6 +1,15 @@
 # Raccordement Albert API — synthèse annuelle
 
-État au 17 octobre 2026 : interface du widget préparée ; aucun appel à Albert n'est activé. Le bouton « Préparer les données à transmettre » affiche localement le JSON qui serait envoyé et permet désormais de le copier. Aucune clé et aucune donnée d'exercice individuelle ne figurent dans ce fichier.
+État au 17 octobre 2026 : le widget prépare un document texte (consigne + JSON agrégé). Aucun appel à Albert n'est activé. Aucune clé et aucune donnée d'exercice individuelle ne figurent dans ce fichier.
+
+## Circuit conseillé avec L’Assistant de la DINUM
+
+1. Ouvrir « Comparaison des années » → « Synthèse annuelle », choisir l'année, cliquer « Préparer le document pour L’Assistant ». Vérifier la consigne et les agrégats sous « Voir le document ».
+2. Cliquer « Copier consigne + données », puis « Ouvrir L’Assistant ». Coller le contenu dans une nouvelle conversation et envoyer. La copie dans le champ de conversation suffit ; le téléchargement n'est pas obligatoire.
+3. Si la copie est bloquée par le navigateur ou le cadre Grist, utiliser « Télécharger le document .txt », puis le joindre dans la conversation avec une demande explicite de rédaction.
+4. Relire le texte obtenu, corriger les constats discutables et l'intégrer manuellement dans la synthèse imprimable du widget.
+
+Un lien vers L’Assistant ne peut pas déposer et soumettre silencieusement les données dans la conversation : une action explicite dans cette application reste nécessaire. Le document est créé localement dans le navigateur jusqu'à la copie, au téléchargement ou à l'envoi manuel. L'usage de cet assistant et le contenu envoyé doivent respecter le périmètre de données autorisé par le service.
 
 ## Essai immédiat avec une clé temporaire
 
