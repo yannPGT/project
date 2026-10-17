@@ -69,6 +69,20 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 .annual-objectives ul{margin:0 0 5px;padding-left:16px}
 .annual-objectives li{margin:2px 0}
 .annual-objectives .objective-code{font-weight:700}
+.comparison-section{margin:18px 0 0}
+.comparison-section h3{font-size:17px;margin:0 0 10px;color:var(--blue)}
+.comparison-section .detail-note{margin:0 0 10px}
+.comparison-table{width:100%;border-collapse:collapse;font-size:13px;min-width:540px}
+.comparison-table th,.comparison-table td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:right}
+.comparison-table th:first-child,.comparison-table td:first-child{text-align:left;min-width:190px}
+.comparison-table th{background:#f3f5fb;color:#161616;font-weight:700}
+.comparison-table tbody tr:hover{background:#f8f9fd}
+.comparison-table td b{color:var(--blue)}
+.comparison-table .value-bar{height:5px;border-radius:4px;background:#dbe4f2;margin-top:4px;overflow:hidden}
+.comparison-table .value-bar i{display:block;height:100%;background:#000091}
+.comparison-chips{display:flex;flex-wrap:wrap;gap:8px}
+.comparison-chips span{border:1px solid var(--line);border-radius:5px;padding:5px 8px;background:white}
+@media(max-width:640px){.comparison-table{font-size:12px}.comparison-table th,.comparison-table td{padding:7px 8px}}
 /* Bandeau ministériel fourni par la DGSCGC */
 .masthead{display:flex;align-items:center;gap:24px;min-height:138px;padding:12px 4px 16px}
 .ministry-banner{display:block;flex:0 1 528px;min-width:0}
@@ -96,6 +110,7 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 <button type="button" id="tabGeneral" data-view="general" class="active" aria-current="page">Vue générale</button>
 <button type="button" id="tabDepartment" data-view="department">Vue départementale</button>
 <button type="button" id="tabZone" data-view="zone">Vue zonale</button>
+<button type="button" id="tabComparison" data-view="comparison">Comparaison des années</button>
 </nav><section class="view" id="viewGeneral">
 <div class="overview-title"><h2>Vue d’ensemble</h2><span id="selectionLabel"></span></div>
 <section class="overview">
@@ -133,6 +148,11 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
   <div class="detail-panel"><h3>Financement de la zone</h3><div id="detailZoneFinance"></div></div>
  </div>
  <div class="detail-panel"><h3>Validation des objectifs zonaux</h3><div id="detailZoneManual" class="manual-editor"></div><div id="detailZoneFeedback" role="status"></div></div>
+</section>
+<section class="view" id="viewComparison" hidden>
+ <div class="detail-heading"><h2>Comparaison des années</h2><p>Évolution de l’activité des exercices entre 2024 et 2026, par grands domaines.</p></div>
+ <div id="compareStatus" class="detail-note" role="status"></div>
+ <div id="compareContent"></div>
 </section>
 <footer class="footer">DGSCGC · BPAC · Statistiques Exercices &amp; RETEX · Données issues du classeur Grist</footer>
 </main>
@@ -452,21 +472,155 @@ try{if(!window.grist||!grist.docApi)throw new Error('API Grist absente. Ouvrez c
 <script>
 
 'use strict';
-let unifiedPage='general', detailDepartmentKey='',detailZoneCode='',departmentExtras=[],zoneManualRows=[];
+let unifiedPage='general', comparisonRendered=false, detailDepartmentKey='',detailZoneCode='',departmentExtras=[],zoneManualRows=[];
 const detailLoaded={department:false,zone:false},detailLoading={department:null,zone:null};
 const detailSelect=(el,items,key)=>{if(!items.some(x=>x.key===key))key=items[0]?.key||'';el.innerHTML=items.map(x=>'<option value="'+esc(x.key)+'"'+(x.key===key?' selected':'')+'>'+esc(x.label)+'</option>').join('');return key};
 const totalBar=(label,items)=>'<div class="subheading">'+esc(label)+'</div>'+barRows(items);
 function financeAmount(v){if(v==null||v==='')return 0;if(typeof v==='number')return v;return Number(String(v).replace(/\s|\u00a0|€/g,'').replace(',','.'))||0}
+
+const COMPARE_YEARS=['2024','2025','2026'];
+function compareOrganizer(r,year){
+ const p=norm(text(cell(r,['Posture'])));
+ if(Number(year)>=2026)return !p||p==='organisateur';
+ return !p||p==='organisateur'||p==='direction'||p==='vigilance'||(territoryClass(r)==='emiz'&&(p==='veille'||p==='renforce'));
+}
+function comparisonYear(year){
+ const all=S.bdd.filter(r=>yearOf(r)===year);
+ const organized=all.filter(r=>compareOrganizer(r,year));
+ const dept=organized.filter(r=>territoryClass(r)==='dept');
+ const zone=organized.filter(r=>territoryClass(r)==='emiz'&&!isExcludedEmizZone(r));
+ const countState=(rows,state)=>rows.filter(r=>norm(text(cell(r,['Etat','État','Statut'])))===state).length;
+ const breakdown=(rows)=>({real:countState(rows,'realise'),planned:countState(rows,'programme'),cancel:countState(rows,'annule')});
+ const dep=breakdown(dept),zon=breakdown(zone),portfolio=dept.concat(zone);
+ const indicatorRows=S.ind.filter(r=>yearOf(r)===year);
+ const indicatorDept=indicatorRows.filter(isDepartment);
+ const indicatorZone=indicatorRows.filter(r=>!isExcludedEmizZone(r)&&!isSaintPierreZone(r)&&
+   (norm(territoryType(r))==='zone'||norm(territoryType(r))==='emiz'||(norm(territoryName(r)).startsWith('zd')&&!norm(territoryType(r)).includes('departement')&&!norm(territoryType(r)).includes('collectivite'))));
+ const realByKey=new Map();
+ for(const ex of organized){
+   if(norm(text(cell(ex,['Etat','État','Statut'])))!=='realise')continue;
+   const key=territoryKey(ex);realByKey.set(key,(realByKey.get(key)||0)+1);
+ }
+ const objectiveStats=(items,defaultGoal)=>items.length?{
+   reached:items.filter(r=>{
+     const actual=Number(year)<2026?realByKey.get(territoryKey(r))||0:number(cell(r,['Nb_Realise','Nb_Exercices_Realises','Nb_exercices_realises']));
+     return actual>=(number(cell(r,['Objectif','Objectif_annuel']))||defaultGoal);
+   }).length,total:items.length}:null;
+ const money=S.finance.filter(r=>yearOf(r)===year);
+ const sum=(names)=>money.reduce((n,r)=>n+number(cell(r,names)),0);
+ const count=(rows,names)=>rows.filter(r=>yes(cell(r,names))).length;
+ const activeGoals=kind=>S.objectives.filter(o=>yearOf(o)===year&&yes(cell(o,['Actif']))&&
+   (kind==='dept'?norm(cell(o,['Niveau'])).includes('departement'):norm(cell(o,['Niveau'])).includes('zone')||norm(cell(o,['Niveau'])).includes('emiz')));
+ const goals=(kind,indicators)=>activeGoals(kind).map(o=>{
+   const evaluated=indicators.map(r=>coverageState(objectiveCoverage(r,o)));
+   return {code:objectiveCode(o),label:objectiveName(o),reported:evaluated.filter(x=>x!=='missing').length,
+      done:evaluated.filter(x=>x==='done').length};
+ });
+ return{
+   year,available:all.length>0,total:all.length,dept:dep,zone:zon,departmentGoals:objectiveStats(indicatorDept,4),
+   zoneGoals:objectiveStats(indicatorZone,2),qualDept:goals('dept',indicatorDept),qualZone:goals('emiz',indicatorZone),
+   typeCounts:grouped(portfolio,exerciseType),riskCounts:grouped(portfolio,riskType),
+   planCounts:grouped(portfolio.filter(r=>planName(r)!=='Non renseigné'),planName),
+   alerts:{
+     pop:count(dept,['Alerte_de_la_population','Alerte population','Alerte à la population']),
+     participation:count(dept,['Population_impliquee','Population impliquée','Population impliquee']),
+     fr:count(dept,ALERT_CHANNELS[0].fields),
+     saip:count(dept,ALERT_CHANNELS[1].fields),
+     radio:count(dept,ALERT_CHANNELS[2].fields),
+     school:count(dept,['scolaires','scolaire']),cip:count(dept,['CIP']),
+     do:dept.filter(r=>yes(cell(r,['DO joué','DO_joue','DO joue']))||['joue','dojoue'].includes(norm(text(cell(r,['DO joué','DO_joue','DO joue']))))).length
+   },
+   pcs:all.filter(r=>planTypesImplemented(r).includes('PCS')).length,
+   pics:all.filter(r=>planTypesImplemented(r).includes('PICS')).length,
+   money:{available:money.length>0,asked:sum(['Total_Demande']),received:sum(['Total_Recu']),pending:sum(['Nb_Sans_MAJ'])}
+ };
+}
+function compareTable(title,rows,data,note=''){
+ const headers=COMPARE_YEARS.map(year=>'<th scope="col">'+year+'</th>').join('');
+ const body=rows.map(row=>'<tr><th scope="row">'+esc(row.label)+'</th>'+data.map(d=>{
+   const v=d.available?row.value(d):null;
+   return '<td>'+((v===null||v===undefined)?'<span title="Donnée non disponible">—</span>':esc(String(v)))+'</td>';
+ }).join('')+'</tr>').join('');
+ return '<section class="comparison-section detail-panel"><h3>'+esc(title)+'</h3>'+(note?'<p class="detail-note">'+esc(note)+'</p>':'')+
+   '<div class="table-wrap"><table class="comparison-table"><thead><tr><th scope="col">Indicateur</th>'+headers+'</tr></thead><tbody>'+body+'</tbody></table></div></section>';
+}
+function compareRanking(kind,data){
+ const scores=new Map();
+ for(const d of data)for(const [label,n] of d[kind]){
+   if(label==='Non renseigné')continue;
+   scores.set(label,(scores.get(label)||0)+n);
+ }
+ const leaders=[...scores.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'fr')).slice(0,8).map(x=>x[0]);
+ return leaders.map(label=>({label,value:d=>fmt(d[kind].find(x=>x[0]===label)?.[1]||0)}));
+}
+function compareQualitative(data){
+ const renderGoals=(items)=>items.length?items.map(x=>'<div title="'+esc(x.label)+'"><b>'+esc(x.code)+'</b> — '+esc(x.label)+
+   '<br><small>'+(x.reported?fmt(x.done)+' / '+fmt(x.reported)+' territoires renseignés':'Couverture non renseignée')+'</small></div>').join(''):'Aucun objectif dans OBJECTIFS_CIRCULAIRE';
+ return '<section class="comparison-section detail-panel"><h3>Objectifs qualitatifs de la circulaire</h3>'+
+   '<p class="detail-note">Les objectifs changent selon l’année. Les couvertures ci-dessous décrivent chaque objectif séparément et ne constituent pas un taux annuel directement comparable.</p>'+
+   '<div class="table-wrap"><table class="comparison-table"><thead><tr><th>Territoire</th>'+COMPARE_YEARS.map(y=>'<th>'+y+'</th>').join('')+'</tr></thead><tbody>'+
+   '<tr><th>Départements</th>'+data.map(x=>'<td>'+renderGoals(x.qualDept)+'</td>').join('')+'</tr>'+
+   '<tr><th>Zones</th>'+data.map(x=>'<td>'+renderGoals(x.qualZone)+'</td>').join('')+'</tr>'+
+   '</tbody></table></div></section>';
+}
+function renderComparison(){
+ const data=COMPARE_YEARS.map(comparisonYear);
+ const absent=data.filter(x=>!x.available).map(x=>x.year);
+ const current=COMPARE_YEARS.includes(String(new Date().getFullYear()))?String(new Date().getFullYear()):'';
+ $('compareStatus').textContent=(absent.length?'Aucune fiche d’exercice disponible pour '+absent.join(', ')+'. ':'')+
+   (current?'L’année '+current+' est en cours : ses résultats ne représentent pas une année complète. ':'')+
+   'Exercices comptés selon la posture organisateur (Direction et Vigilance pour les années anciennes ; Appui est exclu).';
+ const share=(x,total)=>total?fmt(x)+' / '+fmt(total)+' ('+pct(x,total)+' %)':null;
+ const html=[
+   compareTable('Synthèse et objectifs quantitatifs',[
+     {label:'Exercices départementaux réalisés',value:d=>fmt(d.dept.real)},
+     {label:'Exercices zonaux réalisés',value:d=>fmt(d.zone.real)},
+     {label:'Départements à l’objectif annuel',value:d=>d.departmentGoals?share(d.departmentGoals.reached,d.departmentGoals.total):null},
+     {label:'Zones à l’objectif annuel',value:d=>d.zoneGoals?share(d.zoneGoals.reached,d.zoneGoals.total):null}
+   ],data,'Objectifs quantitatifs affichés lorsque les indicateurs annuels existent dans Grist.'),
+   compareTable('Activité des exercices',[
+     {label:'Départements · programmés',value:d=>fmt(d.dept.planned)},
+     {label:'Départements · annulés',value:d=>fmt(d.dept.cancel)},
+     {label:'Zones · programmés',value:d=>fmt(d.zone.planned)},
+     {label:'Zones · annulés',value:d=>fmt(d.zone.cancel)}
+   ],data),
+   compareTable('Nature des exercices',compareRanking('typeCounts',data),data),
+   compareTable('Risques traités',compareRanking('riskCounts',data),data),
+   compareTable('Alerte et participation de la population',[
+     {label:'Alerte à la population',value:d=>fmt(d.alerts.pop)},
+     {label:'FR-Alert',value:d=>fmt(d.alerts.fr)},
+     {label:'Sirènes SAIP',value:d=>fmt(d.alerts.saip)},
+     {label:'Alerte radio',value:d=>fmt(d.alerts.radio)},
+     {label:'Participation de la population',value:d=>fmt(d.alerts.participation)},
+     {label:'Scolaires impliqués',value:d=>fmt(d.alerts.school)},
+     {label:'CIP activée',value:d=>fmt(d.alerts.cip)},
+     {label:'DO joué',value:d=>fmt(d.alerts.do)}
+   ],data,'Exercices organisés au niveau départemental ; un exercice peut figurer dans plusieurs indicateurs.'),
+   compareTable('Plans mis en œuvre',[
+     {label:'PCS',value:d=>fmt(d.pcs)},
+     {label:'PICS',value:d=>fmt(d.pics)}
+   ].concat(compareRanking('planCounts',data)),data,'PCS et PICS décomptés selon les mêmes colonnes que la synthèse départementale ; les autres lignes portent sur les plans dominants des exercices organisés.'),
+   compareQualitative(data),
+   compareTable('Synthèse financière',[
+     {label:'Financement demandé',value:d=>d.money.available?euro(d.money.asked):null},
+     {label:'Financement reçu renseigné',value:d=>d.money.available?euro(d.money.received):null},
+     {label:'Demandes sans mise à jour',value:d=>d.money.available?fmt(d.money.pending):null}
+   ],data,'Les cellules vides signalent l’absence de lignes dans STATISTIQUES_FINANCEMENT_EMIZ pour l’année concernée.')
+ ];
+ $('compareContent').innerHTML=html.join('');
+ comparisonRendered=true;
+}
 async function showUnifiedPage(page){
- if(!['general','department','zone'].includes(page))return;
+ if(!['general','department','zone','comparison'].includes(page))return;
  unifiedPage=page;
- for(const name of ['general','department','zone']){
+ for(const name of ['general','department','zone','comparison']){
    $('view'+name[0].toUpperCase()+name.slice(1)).hidden=name!==page;
    const tab=$('tab'+name[0].toUpperCase()+name.slice(1));
    tab.classList.toggle('active',name===page);
    if(name===page)tab.setAttribute('aria-current','page');else tab.removeAttribute('aria-current');
  }
  if(page==='general'){requestAnimationFrame(()=>{S.deptMap?.invalidateSize({pan:false});S.emizMap?.invalidateSize({pan:false})});return}
+ if(page==='comparison'){if(S.bdd.length&&!comparisonRendered)renderComparison();return}
  try{
    if(!detailLoaded[page]){
      if(!detailLoading[page])detailLoading[page]=(async()=>{
