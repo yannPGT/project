@@ -85,7 +85,7 @@ function yearRows(data){return data.filter(r=>yearOf(r)===S.year)}
 function currentIndicators(){return yearRows(S.ind)}
 function departments(){return currentIndicators().filter(isDepartment)}
 function emizSummaryRows(){return yearRows(S.emiz)}
-function emizSummary(){const rows=emizSummaryRows();return rows.find(isSelected)||rows[0]||S.emiz.find(isSelected)||null}
+function emizSummary(){const rows=emizSummaryRows();return rows.find(isSelected)||rows[0]||null}
 function emizMapRows(){const rows=yearRows(S.carteEmiz),selected=rows.filter(isSelected);return selected.length?selected:(rows.length?rows:S.carteEmiz.filter(isSelected))}
 function isSelected(r){const v=cell(r,['Annee_selectionnee','Année_selectionnée']);return v===true||v===1||String(v).toLowerCase()==='true'}
 function isSaintPierreZone(r){const s=norm([zoneCode(r),zoneOf(r),territoryName(r),text(cell(r,['Zone']))].join(' '));return s.includes('saintpierre')||s.includes('miquelon')}
