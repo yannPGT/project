@@ -66,7 +66,7 @@ function yearOf(r){
   const direct=yearFrom(cell(r,['Annee','Année','Annee_exercice','Année_exercice','Annee de l’exercice','Année de l’exercice','Annee_Exercice']));
   if(direct)return direct;
   for(const field of ['Cle_Annee_Niveau','Cle_Annee_Zone','Cle_Annee_Exercice','Cle_Annee']){
-    const match=text(cell(r,[field])).match(/20\\d{2}/);if(match)return match[0];
+    const match=text(cell(r,[field])).match(/20\d{2}/);if(match)return match[0];
   }
   return '';
 }
