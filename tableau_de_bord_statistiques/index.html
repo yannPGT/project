@@ -82,7 +82,28 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 .comparison-table .value-bar i{display:block;height:100%;background:#000091}
 .comparison-chips{display:flex;flex-wrap:wrap;gap:8px}
 .comparison-chips span{border:1px solid var(--line);border-radius:5px;padding:5px 8px;background:white}
-@media(max-width:640px){.comparison-table{font-size:12px}.comparison-table th,.comparison-table td{padding:7px 8px}}
+.compare-key{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:10px 0;padding:8px 12px;border:1px solid #d8e1ef;border-radius:6px;background:#f7f9fd;font-size:12px;color:#3a4760}
+.compare-key>span{display:inline-flex;align-items:center;gap:5px}.compare-key .compare-key-partial{margin-left:auto;color:#71552d}
+.compare-hero{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0 20px}
+.compare-card{background:#fff;border:1px solid #dce3ec;border-left:4px solid #000091;border-radius:6px;padding:14px 15px;box-shadow:0 2px 8px rgba(0,0,40,.05)}
+.compare-card-title{color:#4b5563;font-size:12px;min-height:34px;font-weight:600}
+.compare-card-total{font-size:27px;font-weight:750;color:#161616;line-height:1.15;margin:8px 0 5px}
+.compare-card-period{font-size:11px;color:#6b7280;margin-bottom:8px}
+.compare-bars{display:grid;gap:5px;margin-top:12px}
+.compare-bar-line{display:grid;grid-template-columns:32px 1fr auto;gap:7px;align-items:center;font-size:11px;color:#444}
+.compare-bar-track{height:7px;background:#e9edf5;border-radius:8px;overflow:hidden}
+.compare-bar-fill{display:block;height:100%;border-radius:8px;background:#000091}
+.compare-bar-line.partial .compare-bar-fill{background:repeating-linear-gradient(45deg,#000091 0 4px,#9aabdf 4px 8px)}
+.comparison-table .comparison-value{display:block;color:#161616;font-weight:700}
+.comparison-table .comparison-cell{display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-height:36px;justify-content:center}
+.comparison-table thead small{display:block;font-weight:400;font-size:10px;color:#71552d}
+.trend{display:inline-flex;align-items:center;gap:3px;border-radius:4px;padding:2px 6px;font-weight:700;font-size:10px;line-height:1.3;white-space:nowrap}
+.trend.up{background:#e7eefc;color:#000091}
+.trend.down{background:#fff1df;color:#87520b}
+.trend.stable{background:#f0f2f5;color:#555}
+.trend.partial{border:1px dashed currentColor;background:transparent;opacity:.8}
+@media(max-width:1100px){.compare-hero{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.compare-hero{grid-template-columns:1fr}.compare-key .compare-key-partial{margin-left:0}.comparison-table{font-size:12px;min-width:640px}.comparison-table th,.comparison-table td{padding:7px 8px}}
 /* Bandeau ministériel fourni par la DGSCGC */
 .masthead{display:flex;align-items:center;gap:24px;min-height:138px;padding:12px 4px 16px}
 .ministry-banner{display:block;flex:0 1 528px;min-width:0}
@@ -151,6 +172,7 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 </section>
 <section class="view" id="viewComparison" hidden>
  <div class="detail-heading"><h2>Comparaison des années</h2><p>Évolution de l’activité des exercices entre 2024 et 2026, par grands domaines.</p></div>
+ <div class="compare-key" aria-label="Lecture des tendances"><span><b class="trend up">▲</b> Hausse</span><span><b class="trend down">▼</b> Baisse</span><span><b class="trend stable">→</b> Stable</span><span class="compare-key-partial">2026 : année en cours, écarts provisoires</span></div>
  <div id="compareStatus" class="detail-note" role="status"></div>
  <div id="compareContent"></div>
 </section>
@@ -535,11 +557,33 @@ function comparisonYear(year){
    money:{available:money.length>0,asked:sum(['Total_Demande']),received:sum(['Total_Recu']),pending:sum(['Nb_Sans_MAJ'])}
  };
 }
+function compareNumber(value){
+ if(value===null||value===undefined)return null;
+ if(typeof value==='number')return Number.isFinite(value)?value:null;
+ const str=String(value).replace(/[\s\u00a0\u202f]/g,'').replace(',','.');
+ const match=str.match(/^[+-]?\d+(?:\.\d+)?/);
+ return match?Number(match[0]):null;
+}
+function compareTrend(current,previous,{partial=false,unit=''}={}){
+ if(!Number.isFinite(current)||!Number.isFinite(previous))return '';
+ const delta=Math.round((current-previous)*10)/10;
+ const state=delta>0?'up':delta<0?'down':'stable',symbol=state==='up'?'▲':state==='down'?'▼':'→';
+ const signed=delta>0?'+':'',amount=new Intl.NumberFormat('fr-FR',{maximumFractionDigits:1}).format(delta);
+ const percent=previous&&unit!=='pts'?Math.round(Math.abs(delta/previous*100))+' %':'';
+ const label=(state==='up'?'Hausse':state==='down'?'Baisse':'Stable')+' : '+signed+amount+(unit?' '+unit:'')+
+  (percent?' ('+percent+' par rapport à l’année précédente)':'')+(partial?' ; année en cours, comparaison provisoire':'');
+ return '<span class="trend '+state+(partial?' partial':'')+'" title="'+esc(label)+'" aria-label="'+esc(label)+'">'+symbol+' '+signed+amount+(unit?' '+esc(unit):'')+
+  (percent?' · '+percent:'')+'</span>';
+}
 function compareTable(title,rows,data,note=''){
- const headers=COMPARE_YEARS.map(year=>'<th scope="col">'+year+'</th>').join('');
- const body=rows.map(row=>'<tr><th scope="row">'+esc(row.label)+'</th>'+data.map(d=>{
-   const v=d.available?row.value(d):null;
-   return '<td>'+((v===null||v===undefined)?'<span title="Donnée non disponible">—</span>':esc(String(v)))+'</td>';
+ const headers=COMPARE_YEARS.map(year=>'<th scope="col">'+year+(year===String(new Date().getFullYear())?'<small>en cours</small>':'')+'</th>').join('');
+ const body=rows.map(row=>'<tr><th scope="row">'+esc(row.label)+'</th>'+data.map((d,i)=>{
+   const value=d.available?row.value(d):null;
+   if(value===null||value===undefined)return '<td><span title="Donnée non disponible">—</span></td>';
+   const current=row.measure?row.measure(d):compareNumber(value);
+   const previous=i>0&&data[i-1].available?(row.measure?row.measure(data[i-1]):compareNumber(row.value(data[i-1]))):null;
+   const trend=i>0?compareTrend(current,previous,{partial:d.year===String(new Date().getFullYear()),unit:row.trendUnit||''}):'';
+   return '<td><div class="comparison-cell"><span class="comparison-value">'+esc(String(value))+'</span>'+trend+'</div></td>';
  }).join('')+'</tr>').join('');
  return '<section class="comparison-section detail-panel"><h3>'+esc(title)+'</h3>'+(note?'<p class="detail-note">'+esc(note)+'</p>':'')+
    '<div class="table-wrap"><table class="comparison-table"><thead><tr><th scope="col">Indicateur</th>'+headers+'</tr></thead><tbody>'+body+'</tbody></table></div></section>';
@@ -551,7 +595,30 @@ function compareRanking(kind,data){
    scores.set(label,(scores.get(label)||0)+n);
  }
  const leaders=[...scores.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'fr')).slice(0,8).map(x=>x[0]);
- return leaders.map(label=>({label,value:d=>fmt(d[kind].find(x=>x[0]===label)?.[1]||0)}));
+ return leaders.map(label=>({label,value:d=>fmt(d[kind].find(x=>x[0]===label)?.[1]||0),
+    measure:d=>d[kind].find(x=>x[0]===label)?.[1]||0}));
+}
+function compareHero(data){
+ const latest=data.at(-1),previous=data.at(-2),partial=latest.year===String(new Date().getFullYear());
+ const cards=[
+   {label:'Exercices départementaux réalisés',value:d=>d.dept.real},
+   {label:'Exercices zonaux réalisés',value:d=>d.zone.real},
+   {label:'Alertes à la population',value:d=>d.alerts.pop},
+   {label:'Exercices avec DO joué',value:d=>d.alerts.do}
+ ];
+ return '<div class="compare-hero">'+cards.map(card=>{
+   const max=Math.max(1,...data.map(d=>d.available?card.value(d):0));
+   const current=latest.available?card.value(latest):null;
+   const last=previous.available?card.value(previous):null;
+   const chart=data.map(d=>{
+     const n=d.available?card.value(d):null,width=n===null?0:Math.max(n>0?3:0,Math.round(n/max*100));
+     return '<div class="compare-bar-line'+(d.year===String(new Date().getFullYear())?' partial':'')+'"><span>'+d.year+'</span><div class="compare-bar-track"><i class="compare-bar-fill" style="width:'+width+'%"></i></div><b>'+(n===null?'—':fmt(n))+'</b></div>';
+   }).join('');
+   return '<article class="compare-card"><div class="compare-card-title">'+esc(card.label)+'</div>'+
+     '<div class="compare-card-total">'+(current===null?'—':fmt(current))+'</div>'+
+     '<div class="compare-card-period">'+esc(latest.year)+(partial?' · résultat provisoire':'')+'</div>'+
+     compareTrend(current,last,{partial})+'<div class="compare-bars">'+chart+'</div></article>';
+ }).join('')+'</div>';
 }
 function compareQualitative(data){
  const renderGoals=(items)=>items.length?items.map(x=>'<div title="'+esc(x.label)+'"><b>'+esc(x.code)+'</b> — '+esc(x.label)+
@@ -572,11 +639,12 @@ function renderComparison(){
    'Exercices comptés selon la posture organisateur (Direction et Vigilance pour les années anciennes ; Appui est exclu).';
  const share=(x,total)=>total?fmt(x)+' / '+fmt(total)+' ('+pct(x,total)+' %)':null;
  const html=[
-   compareTable('Synthèse et objectifs quantitatifs',[
+   compareHero(data),
+  compareTable('Synthèse et objectifs quantitatifs',[
      {label:'Exercices départementaux réalisés',value:d=>fmt(d.dept.real)},
      {label:'Exercices zonaux réalisés',value:d=>fmt(d.zone.real)},
-     {label:'Départements à l’objectif annuel',value:d=>d.departmentGoals?share(d.departmentGoals.reached,d.departmentGoals.total):null},
-     {label:'Zones à l’objectif annuel',value:d=>d.zoneGoals?share(d.zoneGoals.reached,d.zoneGoals.total):null}
+     {label:'Départements à l’objectif annuel',value:d=>d.departmentGoals?share(d.departmentGoals.reached,d.departmentGoals.total):null,measure:d=>d.departmentGoals&&d.departmentGoals.total?pct(d.departmentGoals.reached,d.departmentGoals.total):null,trendUnit:'pts'},
+     {label:'Zones à l’objectif annuel',value:d=>d.zoneGoals?share(d.zoneGoals.reached,d.zoneGoals.total):null,measure:d=>d.zoneGoals&&d.zoneGoals.total?pct(d.zoneGoals.reached,d.zoneGoals.total):null,trendUnit:'pts'}
    ],data,'Objectifs quantitatifs affichés lorsque les indicateurs annuels existent dans Grist.'),
    compareTable('Activité des exercices',[
      {label:'Départements · programmés',value:d=>fmt(d.dept.planned)},
