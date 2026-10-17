@@ -228,7 +228,7 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
      <button type="button" id="printReport">Imprimer / enregistrer en PDF</button></div>
    <div class="ai-panel" aria-label="Aide à la rédaction de la synthèse">
      <div class="ai-panel-head"><div><strong>Aide à la rédaction</strong><p>Une proposition rédigée est préparée sur demande, puis relue avant d’intégrer la synthèse.</p></div><span class="ai-badge">Option en préparation</span></div>
-     <div class="ai-actions"><button type="button" id="aiPrepare">Préparer les données à transmettre</button><button type="button" id="aiGenerate" disabled>Demander une rédaction à Albert</button><button type="button" id="aiManual">Saisir un brouillon manuel</button><span id="aiStatus" role="status" aria-live="polite">Aucune donnée transmise. Le raccordement sécurisé reste à configurer.</span></div>
+     <div class="ai-actions"><button type="button" id="aiPrepare">Préparer les données à transmettre</button><button type="button" id="aiCopy" disabled>Copier le résumé JSON</button><button type="button" id="aiGenerate" disabled>Demander une rédaction à Albert</button><button type="button" id="aiManual">Saisir un brouillon manuel</button><span id="aiStatus" role="status" aria-live="polite">Aucune donnée transmise. Le raccordement sécurisé reste à configurer.</span></div>
      <details id="aiPayloadDetail"><summary>Voir les données préparées pour l’IA</summary><pre id="aiPayloadPreview"></pre></details>
      <div id="aiEditor" hidden><label for="aiDraft">Brouillon à vérifier et compléter</label><textarea id="aiDraft" rows="8" maxlength="12000" spellcheck="true"></textarea><div class="ai-actions"><button type="button" id="aiApply">Intégrer le texte relu à la synthèse</button><button type="button" id="aiRemove">Retirer le texte de la synthèse</button></div><p class="detail-note">Cette saisie reste temporaire dans le navigateur et n’est pas enregistrée dans Grist.</p></div>
    </div>
@@ -720,7 +720,7 @@ function annualAiPayload(data){
 }
 function resetAnnualAiEditor(){
  preparedAnnualYear='';preparedAnnualPayload=null;annualDraftYear='';
- $('aiPayloadPreview').textContent='';$('aiPayloadDetail').open=false;
+ $('aiPayloadPreview').textContent='';$('aiPayloadDetail').open=false;$('aiCopy').disabled=true;
  $('aiEditor').hidden=true;$('aiDraft').value='';$('aiGenerate').disabled=true;
  $('aiStatus').textContent='Aucune donnée transmise. Le raccordement sécurisé reste à configurer.';
 }
@@ -728,7 +728,7 @@ function prepareAnnualAi(){
  if(!reportDataset||reportDataset.year!==reportSelectedYear)return;
  preparedAnnualPayload=annualAiPayload(reportDataset);preparedAnnualYear=reportSelectedYear;
  $('aiPayloadPreview').textContent=JSON.stringify(preparedAnnualPayload,null,2);
- $('aiPayloadDetail').open=true;$('aiGenerate').disabled=!ANNUAL_AI_SERVICE_URL;
+ $('aiPayloadDetail').open=true;$('aiCopy').disabled=false;$('aiGenerate').disabled=!ANNUAL_AI_SERVICE_URL;
  $('aiStatus').textContent=ANNUAL_AI_SERVICE_URL
   ?'Données préparées. Aucun envoi avant votre clic sur « Demander une rédaction à Albert ».'
   :'Données préparées localement. Service Albert non configuré : aucun envoi effectué.';
@@ -751,6 +751,12 @@ async function generateAnnualAi(){
   $('aiStatus').textContent='Brouillon reçu. Vérifiez les affirmations avant de l’intégrer.';
  }catch(e){$('aiStatus').textContent='Rédaction impossible : '+(e.name==='AbortError'?'délai dépassé':e.message)}
  finally{button.disabled=!ANNUAL_AI_SERVICE_URL||preparedAnnualYear!==reportSelectedYear}
+}
+async function copyAnnualAiPayload(){
+ if(!preparedAnnualPayload||preparedAnnualYear!==reportSelectedYear)return;
+ try{await navigator.clipboard.writeText(JSON.stringify(preparedAnnualPayload,null,2));
+  $('aiStatus').textContent='Résumé JSON copié. Enregistrez-le localement pour l’essai Albert.'}
+ catch(e){$('aiPayloadDetail').open=true;$('aiStatus').textContent='Copie impossible : sélectionnez le texte du résumé ci-dessous.'}
 }
 function startManualAnnualDraft(){
  if(!reportDataset||reportDataset.year!==reportSelectedYear)return;
@@ -1123,6 +1129,7 @@ $('reportMode').addEventListener('click',()=>setComparePresentation('report'));
 $('reportYear').addEventListener('change',()=>{reportSelectedYear=$('reportYear').value;resetAnnualAiEditor();renderAnnualReport()});
 $('printReport').addEventListener('click',()=>window.print());
 $('aiPrepare').addEventListener('click',prepareAnnualAi);
+$('aiCopy').addEventListener('click',copyAnnualAiPayload);
 $('aiGenerate').addEventListener('click',generateAnnualAi);
 $('aiManual').addEventListener('click',startManualAnnualDraft);
 $('aiApply').addEventListener('click',applyAnnualAi);
