@@ -1,6 +1,22 @@
 # Raccordement Albert API — synthèse annuelle
 
-État au 17 octobre 2026 : interface du widget préparée ; aucun appel à Albert n'est activé. Le bouton « Préparer les données à transmettre » affiche localement le JSON qui serait envoyé. Aucune clé et aucune donnée d'exercice individuelle ne figurent dans ce fichier.
+État au 17 octobre 2026 : interface du widget préparée ; aucun appel à Albert n'est activé. Le bouton « Préparer les données à transmettre » affiche localement le JSON qui serait envoyé et permet désormais de le copier. Aucune clé et aucune donnée d'exercice individuelle ne figurent dans ce fichier.
+
+## Essai immédiat avec une clé temporaire
+
+La documentation Albert indique que les clés sont créées depuis le Playground, affichées une seule fois, et expirent au plus tard un an après création. Pour l'essai, créer une clé dédiée, courte durée, puis la révoquer une fois l'essai terminé. Ne jamais copier cette clé dans Grist, dans le widget, dans GitHub, dans un fichier JSON ou dans une conversation.
+
+1. Dans le widget, ouvrir « Comparaison des années » → « Synthèse annuelle » ; choisir l'année ; cliquer « Préparer les données à transmettre » puis « Copier le résumé JSON ». Relire ce résumé (intitulés d'objectifs compris) et enregistrer localement sous `resume.json`.
+2. Télécharger `albert_essai_local.mjs` depuis ce même dossier ; disposer de Node.js 18 ou plus. Dans PowerShell, saisir la clé sans l'inscrire dans l'historique de commandes :
+   ```powershell
+   $secretAlbert = Read-Host 'Clé temporaire Albert' -AsSecureString
+   $env:ALBERT_API_KEY = [System.Net.NetworkCredential]::new('', $secretAlbert).Password
+   node .\albert_essai_local.mjs .\resume.json
+   Remove-Item Env:ALBERT_API_KEY
+   ```
+3. Le script appelle Albert depuis votre poste et affiche seulement un **brouillon** dans le terminal. Si besoin, définir `ALBERT_MODEL` dans l'environnement ; par défaut `openweight-small` selon le guide. Comparer chaque nombre et chaque affirmation à la synthèse Grist. Ne pas publier le texte automatiquement.
+
+L'usage d'une clé temporaire rend cet essai réversible ; **il ne rend pas acceptable l'insertion de la clé dans le JavaScript du widget**. Pour une utilisation collective, passer par le service authentifié ci-dessous.
 
 ## Architecture
 
@@ -29,4 +45,4 @@ Après déploiement et validation du service, remplacer `const ANNUAL_AI_SERVICE
 4. Changement d'année et rechargement des données : le brouillon d'une autre année n'est pas intégré. Tests 2024 sans objectifs qualitatifs et 2026 provisoire.
 5. Cas d'erreur : délai 45 s, 401/403, 429, 503 ; l'état Grist et les chiffres du rapport restent accessibles.
 
-Références : documentation DINUM https://ia.numerique.gouv.fr/outils-ia/albert-api/ ; API https://albert.api.etalab.gouv.fr/reference ; droits des widgets https://support.getgrist.com/widget-custom/.
+Références : guide https://guides.ia.numerique.gouv.fr/albert-api ; clés https://guides.ia.numerique.gouv.fr/albert-api/compte-and-usage/api-keys ; démarrage https://guides.ia.numerique.gouv.fr/albert-api/prise-en-main/quickstart ; API https://albert.api.etalab.gouv.fr/reference ; droits des widgets https://support.getgrist.com/widget-custom/.
