@@ -16,17 +16,18 @@ if(!key||!file){
   const raw=await readFile(file,'utf8');
   if(raw.length>30000)throw new Error('Le résumé dépasse la limite de 30 000 caractères.');
   const payload=JSON.parse(raw);
-  if(payload.version!==1||!['2024','2025','2026'].includes(String(payload.year))||
+  if(payload.version!==2||!['2024','2025','2026'].includes(String(payload.year))||
      !payload.exercises?.department||!payload.exercises?.zone)
     throw new Error('Le fichier doit provenir de « Préparer les données » dans le widget.');
-  const allowed=['version','year','provisional','method','exercises','previousYear','objectives',
-    'goalAttainment','risks','monthly','missingDates','tools','finances'];
+  const allowed=['version','year','generatedAt','currentYearIncomplete','dataQuality','method','exercises',
+    'previousYear','qualitativeObjectives','quantitativeTerritoryTargets','riskCategoryCounts',
+    'monthlyRealizedCounts','recordedToolFlags','financeObservations'];
   const summary=Object.fromEntries(allowed.filter(k=>Object.hasOwn(payload,k)).map(k=>[k,payload[k]]));
   const response=await fetch('https://albert.api.etalab.gouv.fr/v1/chat/completions',{
    method:'POST',signal:AbortSignal.timeout(60000),
    headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
-   body:JSON.stringify({model,temperature:0.1,max_completion_tokens:1400,messages:[
-    {role:'system',content:'Tu rédiges en français une proposition de synthèse institutionnelle à relire. Tu utilises uniquement les agrégats fournis. Conserve les années, les nombres et leurs unités ; ne présente aucune hypothèse comme un fait. Si l’année est provisoire, indique-le. N’invente ni cause, ni recommandation, ni référence réglementaire. Signale les données absentes. Réponds en texte brut, avec des paragraphes courts et des titres sobres.'},
+   body:JSON.stringify({model,temperature:0.1,max_completion_tokens:1800,messages:[
+    {role:'system',content:"Tu rédiges un BROUILLON de synthèse annuelle institutionnelle en français à partir des seuls agrégats JSON. Commence directement par un titre et six parties brèves : volumes ; objectifs quantitatifs territoriaux ; orientations qualitatives de la circulaire ; risques ; calendrier et dispositifs ; finances et limites. Interprète quantitativeTerritoryTargets exclusivement comme des territoires atteignant un seuil annuel de nombre d’exercices ; ne les présente jamais comme un pourcentage des objectifs qualitatifs. Les objectifs qualitatifs listent les orientations, sans indicateur de réalisation individuel : ne déduis aucun taux d’atteinte qualitatif. FR-Alert est un dispositif d’alerte à la population, jamais « FR (France) ». Les indicateurs d’outils sont des cases renseignées ; leur absence ne démontre pas une non-utilisation. Les montants financiers sont des champs enregistrés ; ne calcule pas un taux de financement, n’affirme pas un déficit, une sous-dotation, un besoin non couvert ni un risque futur. Une année échue ne signifie pas des données complètes ; les fiches encore marquées « programmées » ne sont pas des exercices à venir. Aucune causalité saisonnière ni conclusion sur la capacité opérationnelle sans preuve externe. N’invente ni chiffres, ni calculs, ni jugement, ni recommandation, ni référence réglementaire. Si tu calcules une évolution, indique son dénominateur, vérifie-la et emploie une formulation purement descriptive. Décris les limites de source et indique qu’une validation humaine reste requise. Rends du texte brut, sans introduction commerciale."},
     {role:'user',content:JSON.stringify(summary)}
    ]})
   });
