@@ -62,7 +62,14 @@ function text(v){if(v===null||v===undefined)return'';if(Array.isArray(v)){const 
 function number(v){if(Array.isArray(v)&&v[0]==='E')return 0;if(v===null||v===undefined||v==='')return 0;const n=Number(v);return Number.isFinite(n)?n:0}
 function refId(v){if(typeof v==='object'&&v!==null){if(v.rowId!=null)return Number(v.rowId);if(v.id!=null)return Number(v.id)}if(Array.isArray(v))return v.find(x=>typeof x==='number')??null;const n=Number(v);return Number.isFinite(n)?n:null}
 function yearFrom(v){if(v&&typeof v==='object'&&v.Annee!=null)return String(parseInt(v.Annee,10));const s=String(v??'');const m=s.match(/20\d{2}/);if(m)return m[0];const id=refId(v);return id==null?'':(S.yearMap.get(id)||'')}
-function yearOf(r){return yearFrom(cell(r,['Annee','Année']))||String(cell(r,['Cle_Annee_Niveau','Cle_Annee_Zone'])||'').match(/20\d{2}/)?.[0]||''}
+function yearOf(r){
+  const direct=yearFrom(cell(r,['Annee','Année','Annee_exercice','Année_exercice','Annee de l’exercice','Année de l’exercice','Annee_Exercice']));
+  if(direct)return direct;
+  for(const field of ['Cle_Annee_Niveau','Cle_Annee_Zone','Cle_Annee_Exercice','Cle_Annee']){
+    const match=text(cell(r,[field])).match(/20\\d{2}/);if(match)return match[0];
+  }
+  return '';
+}
 function adminOf(v){const id=refId(v);if(id!=null&&S.adminById.has(id))return S.adminById.get(id);const s=text(v);return S.admins.find(a=>text(cell(a,['Niveau_administratif','Zone']))===s)||null}
 function territoryName(r){const raw=cell(r,['Niveau_administratif','Departement','Territoire']);const a=adminOf(raw);return text(cell(a,['Niveau_administratif']))||text(raw)}
 function territoryType(r){const raw=cell(r,['Type_niveau','Type niveau']);const a=adminOf(cell(r,['Niveau_administratif']));return text(raw)||text(cell(a,['Type_niveau','Type niveau']))}
@@ -78,8 +85,8 @@ function yearRows(data){return data.filter(r=>yearOf(r)===S.year)}
 function currentIndicators(){return yearRows(S.ind)}
 function departments(){return currentIndicators().filter(isDepartment)}
 function emizSummaryRows(){return yearRows(S.emiz)}
-function emizSummary(){return S.emiz.find(isSelected)||emizSummaryRows()[0]||S.emiz[0]||null}
-function emizMapRows(){return S.carteEmiz.filter(isSelected)}
+function emizSummary(){const rows=emizSummaryRows();return rows.find(isSelected)||rows[0]||S.emiz.find(isSelected)||null}
+function emizMapRows(){const rows=yearRows(S.carteEmiz),selected=rows.filter(isSelected);return selected.length?selected:(rows.length?rows:S.carteEmiz.filter(isSelected))}
 function isSelected(r){const v=cell(r,['Annee_selectionnee','Année_selectionnée']);return v===true||v===1||String(v).toLowerCase()==='true'}
 function isSaintPierreZone(r){const s=norm([zoneCode(r),zoneOf(r),territoryName(r),text(cell(r,['Zone']))].join(' '));return s.includes('saintpierre')||s.includes('miquelon')}
 const EXCLUDED_EMIZ_ZONES=['caledonie','guyane','polynesie','saintpierre','miquelon'];
