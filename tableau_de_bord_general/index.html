@@ -88,15 +88,14 @@ function exerciseCounts(){
     else if(state.includes('annule'))x.cancel++;
     byTerritory.set(key,x);
   }
-  const computed=yearRows(S.ind).filter(r=>isDepartment(r)||isEmiz(r));
-  const hasMissingTotals=computed.some(r=>!number(cell(r,['Nb_Realise','Nb_Exercices_Realises']))&&!number(cell(r,['Nb_Programme','Nb_Exercices_Programmes']))&&(()=>{const x=byTerritory.get(territoryKey(r));return x&&(x.real||x.planned)})());
-  return S.exerciseCountCache={year:S.year,bdd:S.bdd,byTerritory,useFallback:Number(S.year)<2026&&hasMissingTotals};
+  const hasExercises=[...byTerritory.values()].some(x=>x.real||x.planned||x.cancel);
+  return S.exerciseCountCache={year:S.year,bdd:S.bdd,byTerritory,useFallback:Number(S.year)<2026&&hasExercises};
 }
 function stat(r,type='dept'){
   let real=number(cell(r,['Nb_Realise','Nb_Exercices_Realises','Nb_exercices_realises'])),planned=number(cell(r,['Nb_Programme','Nb_Exercices_Programmes','Nb_exercices_programmes']));
   let late=number(cell(r,['Nb_Programme_En_Retard','Nb_Exercices_En_Retard','Nb_Retard'])),cancel=number(cell(r,['Nb_Annule','Nb_Exercices_Annules']));
   const fallback=exerciseCounts();
-  let replaced=false;if(fallback.useFallback&&!real&&!planned){const x=fallback.byTerritory.get(territoryKey(r));if(x&&(x.real||x.planned)){real=x.real;planned=x.planned;cancel=x.cancel;late=x.late;replaced=true}}
+  let replaced=false;if(fallback.useFallback){const x=fallback.byTerritory.get(territoryKey(r));real=x?.real||0;planned=x?.planned||0;cancel=x?.cancel||0;late=x?.late||0;replaced=true}
   const forecastRaw=cell(r,['Nb_Prevu','Nb_Previsionnel','Nb_Exercices_Previsionnels']),goal=number(cell(r,['Objectif','Objectif_annuel']))||(type==='emiz'?2:4);
   return{real,planned,forecast:replaced||forecastRaw==null?real+planned:number(forecastRaw),late,cancel,goal,raw:r}
 }
@@ -115,14 +114,20 @@ const EXCLUDED_EMIZ_ZONES=['caledonie','guyane','polynesie','saintpierre','mique
 function isExcludedEmizZone(r){const s=norm([zoneCode(r),zoneOf(r),territoryName(r),text(cell(r,['Zone']))].join(' '));return EXCLUDED_EMIZ_ZONES.some(term=>s.includes(term))}
 function emizRows(){return currentIndicators().filter(r=>{if(isSaintPierreZone(r)||isExcludedEmizZone(r))return false;const type=norm(territoryType(r)),name=norm(territoryName(r));return type==='zone'||type==='emiz'||(name.startsWith('zd')&&!type.includes('departement')&&!type.includes('collectivite'))})}
 function nationalRow(){const rs=currentIndicators();return rs.find(r=>norm(territoryType(r))==='national'||norm(territoryName(r))==='national')||null}
-function orgExercises(){return yearRows(S.bdd).filter(r=>{const p=norm(text(cell(r,['Posture'])));return !p||p==='organisateur'||(Number(S.year)<2026&&p!=='joueur')})}
+function orgExercises(){return yearRows(S.bdd).filter(r=>{
+ const p=norm(text(cell(r,['Posture'])));
+ if(Number(S.year)>=2026)return !p||p==='organisateur';
+ if(!p||p==='organisateur'||p==='direction'||p==='vigilance')return true;
+ // Les anciennes postures de mobilisation sont utilisées sur les fiches zonales.
+ return territoryClass(r)==='emiz'&&(p==='veille'||p==='renforce');
+})}
 function exerciseType(r){return text(cell(r,['Type_d_exercice','Type_exercice','Type d’exercice','Type d’exercice']))||'Non renseigné'}
 function riskType(r){return text(cell(r,['Type_de_risque','Type de risque']))||'Non renseigné'}
 function riskName(r){return text(cell(r,['Risque']))||'Non renseigné'}
 function planName(r){const raw=cell(r,['Plan_dominant','Plan dominant']);const id=refId(raw);if(id!=null&&S.planById?.has(id))return S.planById.get(id);return text(raw)||'Non renseigné'}
 function planTypesImplemented(r){const all=['Plan_dominant','Plans_concourant','Plan_concourant'].map(name=>norm(text(cell(r,[name])))).join(' '),types=[];if(all.includes('planintercommunaldesauvegarde'))types.push('PICS');if(all.includes('plancommunaldesauvegarde'))types.push('PCS');return types}
-function territoryClass(x){const r=adminOf(cell(x,['Niveau_administratif']));const t=norm(text(cell(x,['Type_niveau']))||text(cell(r,['Type_niveau'])));if(t.includes('zone')||t.includes('emiz'))return'emiz';if(t.includes('departement')||t.includes('collectivite'))return'dept';return''}
-function territoryKey(r){const code=codeOf(r);return code?'code:'+code:'name:'+norm(territoryName(r))}
+function territoryClass(x){const name=norm(territoryName(x));if(name.startsWith('zd'))return'emiz';if(/^(?:[0-9]{1,3}|2a|2b)/.test(name))return'dept';const r=adminOf(cell(x,['Niveau_administratif'])),t=norm(text(cell(x,['Type_niveau']))||text(cell(r,['Type_niveau'])));if(t.includes('departement')||t.includes('collectivite'))return'dept';if(t.includes('zone')||t.includes('emiz'))return'emiz';return''}
+function territoryKey(r){const name=territoryName(r),dept=name.match(/^\s*(2[AB]|\d{1,3})\s*[-–—]/i),zone=name.match(/^\s*(ZD-[A-Z-]+)/i);if(dept)return'code:'+dept[1].toUpperCase().padStart(2,'0');if(zone)return'zone:'+zone[1].toUpperCase();const code=codeOf(r);return code?'code:'+code:'name:'+norm(name)}
 function sameTerritory(a,b){return territoryKey(a)===territoryKey(b)}
 function exercisePlanLabels(r){
   const labels=[];
