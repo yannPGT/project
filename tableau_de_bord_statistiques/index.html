@@ -64,6 +64,11 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 @media(max-width:850px){.detail-grid{grid-template-columns:1fr}.page{padding:0 12px 35px}.masthead .title{font-size:21px}.detail-filters select{min-width:190px}}
 
 
+.annual-objectives{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);font-size:11px;line-height:1.5}
+.annual-objectives strong{display:block;color:var(--blue);margin:5px 0 2px}
+.annual-objectives ul{margin:0 0 5px;padding-left:16px}
+.annual-objectives li{margin:2px 0}
+.annual-objectives .objective-code{font-weight:700}
 /* Bandeau ministériel fourni par la DGSCGC */
 .masthead{display:flex;align-items:center;gap:24px;min-height:138px;padding:12px 4px 16px}
 .ministry-banner{display:block;flex:0 1 528px;min-width:0}
@@ -94,7 +99,7 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 </nav><section class="view" id="viewGeneral">
 <div class="overview-title"><h2>Vue d’ensemble</h2><span id="selectionLabel"></span></div>
 <section class="overview">
-  <article class="panel goal-panel"><div class="panel-title">Réalisation des objectifs annuels</div><div class="goal-row" id="goals"><div class="empty">Chargement…</div></div></article>
+  <article class="panel goal-panel"><div class="panel-title">Réalisation des objectifs annuels</div><div class="goal-row" id="goals"><div class="empty">Chargement…</div></div><div id="annualObjectives" class="annual-objectives"></div></article>
   <div class="maps">
     <article class="panel map-panel"><div class="map-head"><div class="map-name">Départements et collectivités</div><div class="map-controls"><label class="field">Objectif<select id="deptTheme"></select></label><label class="field" id="planWrap" style="display:none">Plan<select id="planSelect"></select></label></div></div><div class="map-canvas" id="deptMap"></div><div class="map-foot"><div class="legend" id="deptLegend"></div><span class="map-note" id="deptMapNote"></span></div><details class="map-overseas" id="deptOutlyingPanel"><summary>Départements et collectivités ultramarins <span id="deptOutlyingCount"></span></summary><div class="external-cards" id="deptOutlying"></div></details></article>
     <article class="panel map-panel"><div class="map-head"><div class="map-name">États-majors de zone (EMIZ)</div><div class="map-controls"><label class="field">Objectif<select id="emizTheme"></select></label></div></div><div class="map-canvas" id="emizMap"></div><div class="map-foot"><div class="legend" id="emizLegend"></div><span class="map-note" id="emizMapNote"></span></div><details class="map-overseas" id="emizOutlyingPanel"><summary>Zones ultramarines <span id="emizOutlyingCount"></span></summary><div class="external-cards" id="emizOutlying"></div></details></article>
@@ -136,7 +141,7 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 const $=id=>document.getElementById(id);
 const TABLES={years:'Annee',admins:'NIVEAUX_ADMINISTRATIFS',ind:'INDICATEURS_NIVEAUX_V2',emiz:'STATISTIQUES_GENERALE_EMIZ',carteEmiz:'CARTE_EMIZ',bdd:'BDD_SYNAPSE_2026',finance:'STATISTIQUES_FINANCEMENT_EMIZ',objectives:'OBJECTIFS_CIRCULAIRE',deptThemes:'THEMES_CARTOGRAPHIE',emizThemes:'THEMES_CARTOGRAPHIE_EMIZ',plans:'PLANS_CARTOGRAPHIE',choiceYear:'CHOIX_ANNEE_CARTOGRAPHIE'};
 const GEO={dept:'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-avec-outre-mer.geojson',emiz:'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-avec-outre-mer.geojson'};
-const DEPT_THEMES=[['OBJECTIF_QUANT','Atteinte de l’objectif quantitatif'],['OBJECTIF_QUAL','Atteinte de l’objectif qualitatif'],['PREVISION','Atteinte prévisionnelle'],['REALISES','Nombre d’exercices réalisés'],['PROGRAMMES','Nombre d’exercices programmés'],['RETARD','Exercices programmés en retard'],['NAT','Couverture NAT'],['POP','Couverture POP'],['CYB','Couverture CYB'],['RUP','Couverture RUP'],['PLAN','Plans mis en œuvre']];
+const DEPT_THEMES=[['OBJECTIF_QUANT','Atteinte de l’objectif quantitatif'],['OBJECTIF_QUAL','Atteinte de l’objectif qualitatif'],['PREVISION','Atteinte prévisionnelle'],['REALISES','Nombre d’exercices réalisés'],['PROGRAMMES','Nombre d’exercices programmés'],['RETARD','Exercices programmés en retard'],['PLAN','Plans mis en œuvre']];
 const EMIZ_THEMES=[['OBJECTIF_QUANT','Atteinte de l’objectif quantitatif'],['OBJECTIF_QUAL','Atteinte de l’objectif qualitatif'],['PREVISION','Atteinte prévisionnelle'],['REALISES','Nombre d’exercices réalisés'],['PROGRAMMES','Nombre d’exercices programmés'],['RETARD','Exercices programmés en retard']];
 const ZONE_REGIONS={'ZD-PARIS':['Île-de-France'],'ZD-NORD':['Hauts-de-France'],'ZD-OUEST':['Bretagne','Centre-Val de Loire','Normandie','Pays de la Loire'],'ZD-EST':['Grand Est','Bourgogne-Franche-Comté'],'ZD-SUD-OUEST':['Nouvelle-Aquitaine'],'ZD-SUD-EST':['Auvergne-Rhône-Alpes'],'ZD-SUD':['Corse','Occitanie','Provence-Alpes-Côte d’Azur'],'ZD-ANTILLES':['Guadeloupe','Martinique'],'ZD-SUD-OCEAN-INDIEN':['La Réunion','Mayotte']};
 const METRO_EMIZ_ZONES=['ZD-PARIS','ZD-NORD','ZD-OUEST','ZD-EST','ZD-SUD-OUEST','ZD-SUD-EST','ZD-SUD'];
@@ -269,7 +274,31 @@ function codeOf(r){const a=adminOf(cell(r,['Niveau_administratif']));let c=text(
 function statusText(value){return norm(value)}
 function circularObjectives(kind){return S.objectives.filter(o=>yearOf(o)===S.year&&yes(cell(o,['Actif']))&&(()=>{const n=norm(cell(o,['Niveau']));return kind==='dept'?(n.includes('departement')||n.includes('collectivite')):(n.includes('emiz')||n.includes('zone'))})())}
 function objectiveCode(o){return text(cell(o,['Code_objectif','Code']))}
-function objectiveName(o){const c=objectiveCode(o),known={NAT:'Risques naturels',POP:'Population et élus',CYB:'Cyber',RUP:'Rupture capacitaire'};return known[c]||text(cell(o,['Intitule','Libelle','Libellé','Nom_objectif','Objectif']))||c}
+function objectiveName(o){return text(cell(o,['Libelle','Libellé','Intitule','Nom_objectif','Objectif']))||objectiveCode(o)}
+function objectiveCoverage(r,o){
+  const code=objectiveCode(o);
+  return text(cell(r,['Couverture_'+code,'Etat_Couverture_'+code,'Statut_'+code]))||'Non renseigné';
+}
+function coverageState(value){
+  const n=norm(value);
+  if(!n||n.includes('aucunobjectif')||n.includes('nonrenseigne')||n.includes('nonapplicable')||n.includes('sansobjet'))return 'missing';
+  if(n.includes('noncouvert')||n.includes('acouvrir')||n.includes('nonatteint')||n.includes('nonrealise'))return 'absent';
+  if(n.includes('programme')||n.includes('prevision')||n.includes('prevu'))return 'planned';
+  if(n.includes('realise')||n.includes('atteint')||n.includes('couvert'))return 'done';
+  return 'missing';
+}
+function annualObjectiveList(kind){
+  const list=circularObjectives(kind);
+  return list.length?'<strong>'+esc(kind==='dept'?'Départements et collectivités':'Zones')+'</strong><ul>'+list.map(o=>'<li><span class="objective-code">'+esc(objectiveCode(o))+'</span> — '+esc(objectiveName(o))+'</li>').join('')+'</ul>':'';
+}
+function renderAnnualObjectives(){
+  const items=annualObjectiveList('dept')+annualObjectiveList('emiz');
+  $('annualObjectives').innerHTML=items||'<span>Aucun objectif qualitatif actif renseigné dans OBJECTIFS_CIRCULAIRE pour cette année.</span>';
+}
+function objectiveCoverageRows(r,kind){
+  const goals=circularObjectives(kind);
+  return goals.length?goals.map(o=>'<div class="barline"><span title="'+esc(objectiveName(o))+'">'+esc(objectiveCode(o))+' — '+esc(objectiveName(o))+'</span><span>'+esc(objectiveCoverage(r,o))+'</span></div>').join(''):'<div class="empty">Aucun objectif qualitatif actif pour cette année.</div>';
+}
 function themeCanonical(code,label){
   const c=String(code||'').toUpperCase(),n=norm(label);
   if(c==='OBJECTIF'||(n.includes('objectif')&&!n.includes('prevision')))return'OBJECTIF_QUANT';
@@ -282,27 +311,38 @@ function themeCanonical(code,label){
   return c||label;
 }
 function themeItems(kind){
-  const source=kind==='emiz'?S.emizThemes:S.deptThemes, fallback=kind==='emiz'?EMIZ_THEMES:DEPT_THEMES;
+  const source=kind==='emiz'?S.emizThemes:S.deptThemes,fallback=kind==='emiz'?EMIZ_THEMES:DEPT_THEMES;
   const raw=source.length?source:fallback.map(([Code,Libelle])=>({Code,Libelle}));
-  const items=[];let hasQual=false;
+  const active=circularObjectives(kind),activeCodes=new Set(active.map(objectiveCode));
+  const objectiveCodes=new Set([...S.objectives.map(objectiveCode),'NAT','POP','CYB','RUP','NOVI','RENFORT_EXT','INTERDEP','PROJ_INS','PROJ_LOG']);
+  const items=[],seen=new Set();
+  const add=(value,label)=>{if(!seen.has(value)){items.push({value,label});seen.add(value)}};
   raw.forEach(r=>{
-    const code=text(cell(r,['Code'])),label=text(cell(r,['Libelle','Libellé','Nom']));
-    const value=themeCanonical(code,label);
-    if(value==='OBJECTIF_QUANT'){
-      items.push({value,label:'Atteinte de l’objectif quantitatif'});
-      if(!hasQual){items.push({value:'OBJECTIF_QUAL',label:'Atteinte de l’objectif qualitatif'});hasQual=true}
-    }else items.push({value,label:label||code||value});
+    const code=text(cell(r,['Code'])),label=text(cell(r,['Libelle','Libellé','Nom'])),value=themeCanonical(code,label);
+    if(objectiveCodes.has(value)&&!activeCodes.has(value))return;
+    if(value==='OBJECTIF_QUANT'){add(value,'Atteinte de l’objectif quantitatif');add('OBJECTIF_QUAL','Atteinte de l’objectif qualitatif')}
+    else if(value==='OBJECTIF_QUAL')add(value,'Atteinte de l’objectif qualitatif');
+    else if(activeCodes.has(value))add(value,'Couverture '+value+' — '+objectiveName(active.find(o=>objectiveCode(o)===value)));
+    else add(value,label||code||value);
   });
-  if(!items.some(x=>x.value==='OBJECTIF_QUANT'))items.unshift({value:'OBJECTIF_QUAL',label:'Atteinte de l’objectif qualitatif'},{value:'OBJECTIF_QUANT',label:'Atteinte de l’objectif quantitatif'});
-  else if(!hasQual)items.splice(items.findIndex(x=>x.value==='OBJECTIF_QUANT')+1,0,{value:'OBJECTIF_QUAL',label:'Atteinte de l’objectif qualitatif'});
-  const unique=new Set();return items.filter(x=>{if(unique.has(x.value))return false;unique.add(x.value);return true});
+  if(!seen.has('OBJECTIF_QUANT'))items.unshift({value:'OBJECTIF_QUANT',label:'Atteinte de l’objectif quantitatif'});
+  if(!seen.has('OBJECTIF_QUAL'))items.splice(items.findIndex(x=>x.value==='OBJECTIF_QUANT')+1,0,{value:'OBJECTIF_QUAL',label:'Atteinte de l’objectif qualitatif'});
+  active.forEach(o=>add(objectiveCode(o),'Couverture '+objectiveCode(o)+' — '+objectiveName(o)));
+  return items;
 }
 function mapSelectorOptions(kind,current){return themeItems(kind).map(x=>'<option value="'+esc(x.value)+'" '+(x.value===current?'selected':'')+'>'+esc(x.label)+'</option>').join('')}
 function mapThemeLabel(theme,kind){const found=themeItems(kind).find(x=>x.value===theme);if(found)return found.label;const o=circularObjectives(kind).find(x=>objectiveCode(x)===theme);return o?objectiveName(o):theme}
-function coverageColor(value){const st=norm(value);if(!st||st.includes('aucunobjectif')||st.includes('nonrenseigne')||st.includes('nonapplicable'))return DEPT_MAP_COLORS.grey;if(st.includes('noncouvert')||st.includes('acouvrir')||st.includes('nonatteint'))return DEPT_MAP_COLORS.red;if(st.includes('realise')||st.includes('atteint')||st.includes('couvert'))return DEPT_MAP_COLORS.green;if(st.includes('programme')||st.includes('prevision')||st.includes('prevu'))return DEPT_MAP_COLORS.orange;return DEPT_MAP_COLORS.grey}
+function coverageColor(value){const state=coverageState(value);return state==='done'?DEPT_MAP_COLORS.green:state==='planned'?DEPT_MAP_COLORS.orange:state==='absent'?DEPT_MAP_COLORS.red:DEPT_MAP_COLORS.grey}
 function categoryValue(r,theme,kind='dept'){
-  if(theme==='OBJECTIF_QUANT'||theme==='OBJECTIF'){const s=stat(r,kind),goal=kind==='emiz'?2:4;return{kind:'status',value:s.real>=goal?'Atteint':s.forecast>=goal?'Prévu':'À atteindre',n:s.real,goal,forecast:s.forecast}}
-  if(theme==='OBJECTIF_QUAL'||theme==='THEMATIQUE'){const active=circularObjectives(kind),statuses=active.map(o=>text(cell(r,['Couverture_'+objectiveCode(o),'Etat_Couverture_'+objectiveCode(o),'Statut_'+objectiveCode(o)]))).filter(Boolean),ns=statuses.map(norm);let value='Aucun objectif fixé';if(ns.length){if(ns.every(x=>x.includes('realise')||x.includes('atteint')||x.includes('couvert')))value='Réalisé';else if(ns.some(x=>x.includes('programme')||x.includes('prevu'))&&!ns.some(x=>x.includes('noncouvert')||x.includes('acouvrir')))value='Programmé';else value='Non couvert'}return{kind:'coverage',value}}
+  if(theme==='OBJECTIF_QUANT'||theme==='OBJECTIF'){const st=stat(r,kind),goal=st.goal;return{kind:'status',value:st.real>=goal?'Atteint':st.forecast>=goal?'Prévu':'À atteindre',n:st.real,goal,forecast:st.forecast}}
+  if(theme==='OBJECTIF_QUAL'||theme==='THEMATIQUE'){
+    const active=circularObjectives(kind);if(!active.length)return{kind:'coverage',value:'Aucun objectif fixé'};
+    const states=active.map(o=>coverageState(objectiveCoverage(r,o)));
+    const value=states.includes('absent')?'Non couvert':states.includes('missing')?'Non renseigné':states.every(x=>x==='done')?'Réalisé':'Programmé';
+    return{kind:'coverage',value,detail:active.map((o,i)=>objectiveCode(o)+' : '+objectiveCoverage(r,o)).join(' · ')};
+  }
+  const objective=circularObjectives(kind).find(o=>objectiveCode(o)===theme);
+  if(objective)return{kind:'coverage',value:objectiveCoverage(r,objective)};
   if(!['PREVISION','REALISES','PROGRAMMES','RETARD','PLAN'].includes(theme))return{kind:'coverage',value:text(cell(r,['Couverture_'+theme,'Etat_Couverture_'+theme,'Statut_'+theme]))}
   if(r&&cell(r,['Statut'])!==undefined&&cell(r,['Valeur'])!==undefined)return carteCategory(r,theme);
   if(theme==='PREVISION'){const s=stat(r,kind);return{kind:'status',value:s.forecast>=s.goal?'Atteint':'Non atteint',n:s.forecast,goal:s.goal}}
@@ -328,7 +368,7 @@ function deptRealisedColor(v){if(v<=0)return DEPT_MAP_COLORS.real0;if(v===1)retu
 function deptPlanColor(v){if(v<=0)return DEPT_MAP_COLORS.grey;if(v===1)return DEPT_MAP_COLORS.plan1;if(v===2)return DEPT_MAP_COLORS.plan2;if(v===3)return DEPT_MAP_COLORS.plan3;if(v===4)return DEPT_MAP_COLORS.plan4;return DEPT_MAP_COLORS.plan5}
 function deptMapColor(v,theme,b){const C=DEPT_MAP_COLORS;if(!v)return C.grey;if(theme==='OBJECTIF'||theme==='OBJECTIF_QUANT'){if(v.value==='Atteint')return C.green;if(v.value==='Prévu')return C.orange;return C.red}if(theme==='PREVISION')return v.value==='Atteint'?C.green:C.red;if(theme==='RETARD')return number(v.value)===0?C.green:C.red;if(v.kind==='coverage')return coverageColor(v.value);const n=number(v.value);if(theme==='REALISES')return deptRealisedColor(Math.max(0,Math.round(n)));if(theme==='PLAN')return deptPlanColor(Math.max(0,Math.round(n)));if(n<=0)return C.grey;if(n<=b[1])return C.blue1;if(n<=b[2])return C.blue2;if(n<=b[3])return C.blue3;if(n<b[4])return C.blue4;return C.blue5}
 function deptMapLegend(id,theme,b){const C=DEPT_MAP_COLORS,box=$(id);if(theme==='OBJECTIF'||theme==='OBJECTIF_QUANT'){box.innerHTML=[[C.green,'Objectif atteint'],[C.orange,'Atteignable en prévision'],[C.red,'Objectif non atteint'],[C.grey,'Sans objectif / sans donnée']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('');return}if(theme==='PREVISION'){box.innerHTML=[[C.green,'Objectif prévisionnel atteint'],[C.red,'Objectif prévisionnel non atteint'],[C.grey,'Sans objectif / sans donnée']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('');return}if(theme==='RETARD'){box.innerHTML=[[C.green,'Aucun exercice en retard'],[C.red,'Au moins un exercice en retard'],[C.grey,'Sans donnée']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('');return}if(theme==='OBJECTIF_QUAL'||theme==='NAT'||theme==='POP'||theme==='CYB'||theme==='RUP'||(!['PREVISION','RETARD','REALISES','PROGRAMMES','PLAN','OBJECTIF','OBJECTIF_QUANT'].includes(theme))){box.innerHTML=[[C.green,'Réalisé'],[C.orange,'Programmé'],[C.red,'Non couvert'],[C.grey,'Aucun objectif / sans donnée']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('');return}if(theme==='REALISES'){box.innerHTML=[C.real0,C.real1,C.real2,C.real3,C.real4,C.real5,C.real6,C.real7,C.real8].map((c,i)=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+(i===8?'8 et +':String(i))+'</span>').join('');return}if(theme==='PLAN'){box.innerHTML=[[C.grey,'Aucune mise en œuvre'],[C.plan1,'1'],[C.plan2,'2'],[C.plan3,'3'],[C.plan4,'4'],[C.plan5,'5 et +']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('');return}box.innerHTML=[[C.grey,'0'],[C.blue1,'1 à '+b[1]],[C.blue2,(b[1]+1)+' à '+b[2]],[C.blue3,(b[2]+1)+' à '+b[3]],[C.blue4,(b[3]+1)+' à '+Math.max(b[3]+1,b[4]-1)],[C.blue5,b[4]+' et +']].map(([c,l])=>'<span class="key"><i class="swatch" style="background:'+c+'"></i>'+l+'</span>').join('')}
-function deptValueLabel(v){if(!v)return'—';if(v.kind==='status')return fmt(v.n)+' / '+fmt(v.goal)+' réalisés';if(v.kind==='coverage')return text(v.value)||'Non renseigné';return fmt(v.value)}function deptTooltip(r,name,kind='dept'){if(!r)return'<strong>'+esc(name)+'</strong><br>Aucune donnée pour l’année sélectionnée.';const key=kind==='emiz'?'emizTheme':'deptTheme',v=categoryValue(r,S[key],kind),label=mapThemeLabel(S[key],kind);const detail=v.kind==='status'?fmt(v.n)+' / '+fmt(v.goal)+' réalisés · prévision '+fmt(v.forecast)+' / '+fmt(v.goal):v.kind==='coverage'?text(v.value)||'Non renseigné':fmt(v.value);return'<strong>'+esc(territoryName(r)||name)+'</strong><br>'+esc(label)+' : '+esc(detail)}function attachCardTooltip(target,html){
+function deptValueLabel(v){if(!v)return'—';if(v.kind==='status')return fmt(v.n)+' / '+fmt(v.goal)+' réalisés';if(v.kind==='coverage')return text(v.value)||'Non renseigné';return fmt(v.value)}function deptTooltip(r,name,kind='dept'){if(!r)return'<strong>'+esc(name)+'</strong><br>Aucune donnée pour l’année sélectionnée.';const key=kind==='emiz'?'emizTheme':'deptTheme',v=categoryValue(r,S[key],kind),label=mapThemeLabel(S[key],kind);const detail=v.kind==='status'?fmt(v.n)+' / '+fmt(v.goal)+' réalisés · prévision '+fmt(v.forecast)+' / '+fmt(v.goal):v.kind==='coverage'?(text(v.detail)||text(v.value)||'Non renseigné'):fmt(v.value);return'<strong>'+esc(territoryName(r)||name)+'</strong><br>'+esc(label)+' : '+esc(detail)}function attachCardTooltip(target,html){
   target.setAttribute('tabindex','0');target.setAttribute('aria-label',html.replace(/<[^>]*>/g,' '));
   const tipId='floatingMapTooltip';
   const tip=()=>{let el=$(tipId);if(!el){el=document.createElement('div');el.id=tipId;el.className='map-tip';el.setAttribute('role','tooltip');document.body.appendChild(el)}return el};
@@ -350,12 +390,12 @@ function deptValueLabel(v){if(!v)return'—';if(v.kind==='status')return fmt(v.n
   });
   const excluded=new Set(['ZD-GUYANE','ZD-CALEDONIE','ZD-POLYNESIE']);ZONE_OUTLYING.filter(([code])=>!mapZones.has(code)&&!excluded.has(code)).forEach(([code,name])=>{const r=zoneStatFor(code);if(!r)return;const v=categoryValue(r,S.emizTheme,'emiz'),el=document.createElement('span');el.className='external-card';el.textContent=name+' · '+(v.kind==='coverage'?text(v.value):v.kind==='status'?deptValueLabel(v):fmt(v.value));host.appendChild(el);attachCardTooltip(el,deptTooltip(r,name,'emiz'))});$('emizOutlyingCount').textContent='('+host.children.length+' zones)';
 }
-function renderGoals(){const ds=departments().map(r=>stat(r));const da=ds.filter(s=>s.real>=s.goal).length;const zones=emizRows().map(r=>stat(r,'emiz'));const achieved=zones.filter(s=>s.real>=s.goal).length;$('goals').innerHTML=ring('Départements et collectivités',da,ds.length)+ring('EMIZ — activité propre',achieved,zones.length)}
+function renderGoals(){const ds=departments().map(r=>stat(r));const da=ds.filter(s=>s.real>=s.goal).length;const zones=emizRows().map(r=>stat(r,'emiz'));const achieved=zones.filter(s=>s.real>=s.goal).length;$('goals').innerHTML=ring('Départements et collectivités',da,ds.length)+ring('EMIZ — activité propre',achieved,zones.length);renderAnnualObjectives()}
 function renderNational(){const r=nationalRow(),all=departments().map(x=>stat(x));const real=r?number(cell(r,['Nb_Exercices_Realises','Nb_Realise'])):all.reduce((s,x)=>s+x.real,0);const planned=r?number(cell(r,['Nb_Exercices_Programmes','Nb_Programme'])):all.reduce((s,x)=>s+x.planned,0);const late=r?number(cell(r,['Nb_Exercices_En_Retard','Nb_Programme_En_Retard'])):all.reduce((s,x)=>s+x.late,0);const fcast=r?number(cell(r,['Pct_Departements_Prevision_Atteinte'])):pct(all.filter(x=>x.forecast>=x.goal).length,all.length);$('nationalMetrics').innerHTML=metric('Exercices réalisés',fmt(real))+metric('Exercices programmés',fmt(planned))+metric('Atteinte prévisionnelle',fcast+' %')+metric('Exercices en retard',fmt(late));const ex=orgExercises().filter(x=>territoryClass(x)==='dept');$('nationalRisks').innerHTML=barRows(grouped(ex,riskType));$('coverage').innerHTML=barRows([['NAT',number(cell(r,['Pct_Couverture_NAT']))],['POP',number(cell(r,['Pct_Couverture_POP']))],['CYB',number(cell(r,['Pct_Couverture_CYB']))],['RUP',number(cell(r,['Pct_Couverture_RUP']))]].map(([n,v])=>[n,v<=1.5?Math.round(v*100):Math.round(v)]))}
 function renderDepartments(){const d=departments().map(r=>({r,s:stat(r)}));const sums=d.reduce((a,x)=>({real:a.real+x.s.real,planned:a.planned+x.s.planned,late:a.late+x.s.late,forecast:a.forecast+x.s.forecast}),{real:0,planned:0,late:0,forecast:0});const reached=d.filter(x=>x.s.real>=x.s.goal).length,expected=d.filter(x=>x.s.forecast>=x.s.goal).length;$('deptMetrics').innerHTML=metric('Exercices réalisés',fmt(sums.real))+metric('Exercices programmés',fmt(sums.planned))+metric('Départements ayant atteint l’objectif',`${fmt(reached)} / ${fmt(d.length)} (${pct(reached,d.length)} %)`)+metric('Prévision d’atteinte',`${fmt(expected)} / ${fmt(d.length)} (${pct(expected,d.length)} %)`);const ex=orgExercises().filter(x=>territoryClass(x)==='dept');$('deptTypes').innerHTML=barRows(grouped(ex,exerciseType));$('deptRisks').innerHTML=barRows(grouped(ex,riskType));const doPlayed=ex.filter(x=>{const v=cell(x,['DO joué','DO_joue','DO joue']);return yes(v)||['joue','dojoue'].includes(norm(text(v)))});$('deptActors').innerHTML=metric('Exercices avec DO joué',fmt(doPlayed.length),pct(doPlayed.length,ex.length)+' % des exercices départementaux')+'<div class="subheading">Personne ayant joué le DO</div>'+barRows(groupedFieldValuesByExercise(doPlayed,['qui DO','Qui_DO','Qui DO']));const alerts=ex.filter(x=>yes(cell(x,['Alerte_de_la_population','Alerte population','Alerte à la population']))).length;const involved=ex.filter(x=>yes(cell(x,['Population_impliquee','Population impliquée','Population impliquee']))).length;const schoolExercises=ex.filter(x=>yes(cell(x,['scolaires','scolaire']))).length;const cipExercises=ex.filter(x=>yes(cell(x,['CIP']))).length;$('deptPublic').innerHTML=`<div class="table-wrap"><table class="table"><thead><tr><th>Indicateur</th><th class="num">Nombre</th><th class="num">Part des exercices</th></tr></thead><tbody><tr><td>Exercices avec alerte à la population</td><td class="num">${fmt(alerts)}</td><td class="num">${pct(alerts,ex.length)} %</td></tr><tr><td>Exercices avec participation de la population</td><td class="num">${fmt(involved)}</td><td class="num">${pct(involved,ex.length)} %</td></tr><tr><td>Exercices impliquant des scolaires</td><td class="num">${fmt(schoolExercises)}</td><td class="num">${pct(schoolExercises,ex.length)} %</td></tr><tr><td>Exercices avec activation du CIP</td><td class="num">${fmt(cipExercises)}</td><td class="num">${pct(cipExercises,ex.length)} %</td></tr>${alertChannelRows(ex)}</tbody></table></div>`;const planExerciseRows=yearRows(S.bdd);const pcsCount=planExerciseRows.filter(x=>planTypesImplemented(x).includes('PCS')).length,picsCount=planExerciseRows.filter(x=>planTypesImplemented(x).includes('PICS')).length;$('deptPlans').innerHTML='<div class="subheading">PCS et PICS mis en œuvre sur l’année</div><div class="metrics">'+metric('PCS mis en œuvre',fmt(pcsCount))+metric('PICS mis en œuvre',fmt(picsCount))+'</div><div class="subheading" style="margin-top:10px">Autres plans activés à titre dominant</div>'+limitedBarRows(grouped(ex,planName).filter(([n])=>n!=='Non renseigné'),10)}
 function emizGroups(){const own=orgExercises().filter(x=>!isExcludedEmizZone(x)&&territoryClass(x)==='emiz');return{own}}
 function renderEmiz(){const es=emizRows().map(r=>({r,s:stat(r,'emiz')}));const derived=es.reduce((a,x)=>({real:a.real+x.s.real,planned:a.planned+x.s.planned,late:a.late+x.s.late}),{real:0,planned:0,late:0});const own=derived;const total=es.length;const achieved=es.filter(x=>x.s.real>=x.s.goal).length;const forecast=es.filter(x=>x.s.forecast>=x.s.goal).length;$('emizMetrics').innerHTML=metric('Exercices zonaux réalisés',fmt(own.real))+metric('Exercices zonaux programmés',fmt(own.planned))+metric('EMIZ ayant atteint l’objectif',`${achieved} / ${total} (${pct(achieved,total)} %)`)+metric('Prévision d’atteinte',`${forecast} / ${total} (${pct(forecast,total)} %)`)+metric('Exercices zonaux en retard',fmt(own.late));const g=emizGroups();$('emizTypes').innerHTML=barRows(grouped(g.own,exerciseType));$('emizRisks').innerHTML=barRows(grouped(g.own,riskType));$('emizPlans').innerHTML=barRows(grouped(g.own,planName).filter(([n])=>n!=='Non renseigné'));renderEmizByZone(es,g)}
-function renderEmizByZone(stats,groups){const zones=[...new Set([...stats.map(x=>zoneCode(x.r)),...groups.own.map(zoneOf)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));if(!zones.length){$('emizByZone').innerHTML='<div class="empty">Aucune donnée zonale pour cette année.</div>';return}const detail=(label,rows,field)=>`<div class="subheading">${label}</div>${barRows(grouped(rows,field))}`;$('emizByZone').innerHTML=zones.map(zone=>{const sr=stats.find(x=>norm(zoneCode(x.r))===norm(zone));const own=groups.own.filter(x=>norm(zoneOf(x))===norm(zone));const st=sr?.s||{real:0,planned:0,forecast:0,goal:2,late:0};return`<details><summary>${esc(zone)} — ${fmt(st.real)} exercice(s) réalisé(s) au niveau zonal</summary><div class="inside"><div class="metrics">${metric('Activité zonale',fmt(st.real)+' réalisé(s)',fmt(st.planned)+' programmé(s) · '+fmt(st.late)+' en retard')}${metric('Objectif EMIZ',fmt(st.goal)+' exercice(s)',`${st.real>=st.goal?'Atteint':st.forecast>=st.goal?'Prévu':'À atteindre'} · prévision ${fmt(st.forecast)}`)}</div>${detail('Types d’exercices',own,exerciseType)}${detail('Risques recensés',own,riskType)}${detail('Plans activés à titre dominant',own.filter(x=>planName(x)!=='Non renseigné'),planName)}</div></details>`}).join('')}
+function renderEmizByZone(stats,groups){const zones=[...new Set([...stats.map(x=>zoneCode(x.r)),...groups.own.map(zoneOf)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));if(!zones.length){$('emizByZone').innerHTML='<div class="empty">Aucune donnée zonale pour cette année.</div>';return}const detail=(label,rows,field)=>`<div class="subheading">${label}</div>${barRows(grouped(rows,field))}`;$('emizByZone').innerHTML=zones.map(zone=>{const sr=stats.find(x=>norm(zoneCode(x.r))===norm(zone));const own=groups.own.filter(x=>norm(zoneOf(x))===norm(zone));const st=sr?.s||{real:0,planned:0,forecast:0,goal:0,late:0};return`<details><summary>${esc(zone)} — ${fmt(st.real)} exercice(s) réalisé(s) au niveau zonal</summary><div class="inside"><div class="metrics">${metric('Activité zonale',fmt(st.real)+' réalisé(s)',fmt(st.planned)+' programmé(s) · '+fmt(st.late)+' en retard')}${metric('Objectif EMIZ',fmt(st.goal)+' exercice(s)',`${st.real>=st.goal?'Atteint':st.forecast>=st.goal?'Prévu':'À atteindre'} · prévision ${fmt(st.forecast)}`)}</div>${detail('Types d’exercices',own,exerciseType)}${detail('Risques recensés',own,riskType)}${detail('Plans activés à titre dominant',own.filter(x=>planName(x)!=='Non renseigné'),planName)}</div></details>`}).join('')}
 function renderFinance(){
   const source=yearRows(S.finance);
   const zoneList=[...METRO_EMIZ_ZONES,'ZD-ANTILLES','ZD-SUD-OCEAN-INDIEN'];
@@ -458,7 +498,7 @@ function renderDepartmentDetail(){
  $('detailDeptForecast').textContent='Prévision : '+fmt(data.forecast)+' / '+fmt(data.goal)+' · '+(data.real>=data.goal?'Objectif atteint':data.forecast>=data.goal?'Objectif prévu atteint':'Objectif à atteindre');
  const key=text(cell(r,['Cle_Annee_Niveau'])),objective=departmentExtras.find(x=>text(cell(x,['Cle_Annee_Niveau']))===key);
  const html=cell(objective,['HTML_Objectifs']);
- $('detailDeptThemes').innerHTML=html?String(html):['NAT','POP','CYB','RUP'].map(code=>'<div class="barline"><span>'+code+'</span><span>'+esc(text(cell(r,['Couverture_'+code]))||'Non renseigné')+'</span></div>').join('');
+ $('detailDeptThemes').innerHTML=objectiveCoverageRows(r,'dept');
  const states=['Réalisé','Programmé','Annulé'];
  const labels=[...new Set(ex.map(riskType))].sort((a,b)=>a.localeCompare(b,'fr'));
  $('detailDeptRisks').innerHTML=labels.length?labels.map(label=>{
@@ -492,11 +532,7 @@ function renderZoneDetail(){
  const sorted=ds.map(x=>({r:x,s:stat(x)})).sort((a,b)=>a.s.forecast>=a.s.goal?1:-1);
  $('detailZoneDepartments').innerHTML='<div class="table-wrap"><table class="table"><thead><tr><th>Département</th><th class="num">Réalisés</th><th class="num">Programmés</th><th class="num">Objectif</th><th>Situation</th></tr></thead><tbody>'+
  sorted.map(({r,s})=>'<tr><td>'+esc(territoryName(r))+'</td><td class="num">'+fmt(s.real)+'</td><td class="num">'+fmt(s.planned)+'</td><td class="num">'+fmt(s.goal)+'</td><td>'+esc(s.real>=s.goal?'Atteint':s.forecast>=s.goal?'Prévu':'À atteindre')+'</td></tr>').join('')+'</tbody></table></div>';
- $('detailZoneThemes').innerHTML=['NAT','POP','CYB','RUP'].map(code=>{
-   const statuses=ds.map(x=>norm(text(cell(x,['Couverture_'+code])))).filter(x=>x&&!x.includes('aucunobjectif')&&!x.includes('nonconcerne'));
-   const done=statuses.filter(x=>!x.includes('non')&&(x.includes('couvert')||x.includes('realise')||x.includes('atteint'))).length;
-   return metric('Couverture '+code,fmt(done)+' / '+fmt(statuses.length));
- }).join('');
+ $('detailZoneThemes').innerHTML=objectiveCoverageRows(r,'emiz');
  const deptKeys=new Set(ds.map(territoryKey)),deptEx=orgExercises().filter(x=>deptKeys.has(territoryKey(x)));
  $('detailZoneRisks').innerHTML=totalBar('Exercices propres à l’EMIZ',grouped(own,riskType))+totalBar('Exercices des départements',grouped(deptEx,riskType));
  const fr=yearRows(S.finance).find(x=>zoneCode(x)===detailZoneCode);
@@ -513,10 +549,16 @@ function renderZoneManual(){
  const key=S.year+'|'+detailZoneCode,root=$('detailZoneManual'),r=zoneManualRows.find(x=>text(cell(x,['Cle_Annee_Zone2']))===key);
  if(!detailLoaded.zone){root.innerHTML='<div class="empty">Validation indisponible.</div>';return}
  if(!r){root.innerHTML='<div class="empty">Aucune ligne annuelle de validation pour cette zone.</div>';return}
- root.innerHTML=['INTERDEP','PROJ_INS'].map(code=>{
-   if(text(cell(r,['Couverture_'+code]))==='Aucun objectif fixé')return '<div>'+code+' : aucun objectif fixé pour cette année.</div>';
-   const value=text(cell(r,['Validation_'+code])),why=text(cell(r,['Justification_'+code])),date=text(cell(r,['Date_validation_'+code]));
-   return '<div data-validation="'+code+'"><label>'+code+'<select data-status="'+code+'">'+[['','À valider'],['Réalisé','Réalisé'],['Non réalisé','Non réalisé'],['Sans objet','Sans objet']].map(([v,l])=>'<option value="'+esc(v)+'"'+(v===value?' selected':'')+'>'+l+'</option>').join('')+'</select></label><label>Justification<textarea data-reason="'+code+'>'+esc(why)+'</textarea></label><small>Dernière validation : '+esc(date||'—')+'</small><br><button type="button" data-save="'+code+'">Enregistrer '+code+'</button></div>';
+ const active=circularObjectives('emiz');
+ if(!active.length){root.innerHTML='<div class="empty">Aucun objectif zonal actif pour cette année.</div>';return}
+ root.innerHTML=active.map(o=>{
+   const code=objectiveCode(o);
+   const field='Validation_'+code,whyField='Justification_'+code,dateField='Date_validation_'+code;
+   const available=Object.keys(r).some(k=>norm(k)===norm(field));
+   if(!available)return '<div><strong>'+esc(code)+'</strong> — '+esc(objectiveName(o))+' : validation individuelle non disponible dans la table STATISTIQUES_EMIZ.</div>';
+   if(text(cell(r,['Couverture_'+code]))==='Aucun objectif fixé')return '<div>'+esc(code)+' : aucun objectif fixé pour cette année.</div>';
+   const value=text(cell(r,[field])),why=text(cell(r,[whyField])),date=text(cell(r,[dateField]));
+   return '<div data-validation="'+esc(code)+'"><label>'+esc(code)+' — '+esc(objectiveName(o))+'<select data-status="'+esc(code)+'">'+[['','À valider'],['Réalisé','Réalisé'],['Non réalisé','Non réalisé'],['Sans objet','Sans objet']].map(([v,l])=>'<option value="'+esc(v)+'"'+(v===value?' selected':'')+'>'+l+'</option>').join('')+'</select></label><label>Justification<textarea data-reason="'+esc(code)+'">'+esc(why)+'</textarea></label><small>Dernière validation : '+esc(date||'—')+'</small><br><button type="button" data-save="'+esc(code)+'">Enregistrer '+esc(code)+'</button></div>';
  }).join('');
  root.querySelectorAll('[data-save]').forEach(button=>button.onclick=()=>saveZoneValidation(button,r,key));
 }
