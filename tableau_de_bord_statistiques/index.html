@@ -110,7 +110,8 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 .report-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:end;margin:16px 0}
 .report-toolbar label{font-size:12px;font-weight:700;display:grid;gap:5px}
 .report-toolbar select{min-width:96px;background:#fff;padding:7px;border:1px solid #b6c2d2}
-.report-toolbar button{border-color:#000091}
+.report-toolbar button{border-color:#000091}.report-toolbar .ai-primary{background:#000091;color:#fff;box-shadow:0 2px 5px rgba(0,0,145,.18)}
+.report-toolbar .ai-primary:hover{background:#1212b0}.ai-panel-head p{max-width:720px}
 .ai-panel{background:#f5f7ff;border:1px solid #c5cff6;border-left:4px solid #000091;border-radius:6px;padding:16px;margin:12px 0 22px}
 .ai-panel-head{display:flex;align-items:start;justify-content:space-between;gap:16px}.ai-panel-head p{margin:4px 0 10px;color:#485467;font-size:13px}
 .ai-badge{font-size:11px;font-weight:700;color:#000091;border:1px solid #bcc8fa;border-radius:20px;padding:4px 9px;white-space:nowrap}
@@ -220,15 +221,16 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
  <div id="compareStatus" class="detail-note" role="status"></div>
  <div class="compare-subnav" role="group" aria-label="Présentations des statistiques">
    <button type="button" id="compareMode" class="active" aria-pressed="true">Comparaison pluriannuelle</button>
-   <button type="button" id="reportMode" aria-pressed="false">Synthèse annuelle</button>
+   <button type="button" id="reportMode" aria-pressed="false">Synthèse annuelle · aide IA</button>
  </div>
  <div id="compareContent"></div>
  <div id="annualReport" hidden>
    <div class="report-toolbar"><label>Année de la synthèse <select id="reportYear"></select></label>
+     <button type="button" id="aiPrepare" class="ai-primary">Préparer le résumé pour Albert</button>
      <button type="button" id="printReport">Imprimer / enregistrer en PDF</button></div>
    <div class="ai-panel" aria-label="Aide à la rédaction de la synthèse">
      <div class="ai-panel-head"><div><strong>Aide à la rédaction</strong><p>Une proposition rédigée est préparée sur demande, puis relue avant d’intégrer la synthèse.</p></div><span class="ai-badge">Option en préparation</span></div>
-     <div class="ai-actions"><button type="button" id="aiPrepare">Préparer les données à transmettre</button><button type="button" id="aiCopy" disabled>Copier le résumé JSON</button><button type="button" id="aiGenerate" disabled>Demander une rédaction à Albert</button><button type="button" id="aiManual">Saisir un brouillon manuel</button><span id="aiStatus" role="status" aria-live="polite">Aucune donnée transmise. Le raccordement sécurisé reste à configurer.</span></div>
+     <div class="ai-actions"><button type="button" id="aiCopy" disabled>Copier le résumé JSON</button><button type="button" id="aiGenerate" disabled>Demander une rédaction à Albert</button><button type="button" id="aiManual">Saisir un brouillon manuel</button><span id="aiStatus" role="status" aria-live="polite">Aucune donnée transmise. Le raccordement sécurisé reste à configurer.</span></div>
      <details id="aiPayloadDetail"><summary>Voir les données préparées pour l’IA</summary><pre id="aiPayloadPreview"></pre></details>
      <div id="aiEditor" hidden><label for="aiDraft">Brouillon à vérifier et compléter</label><textarea id="aiDraft" rows="8" maxlength="12000" spellcheck="true"></textarea><div class="ai-actions"><button type="button" id="aiApply">Intégrer le texte relu à la synthèse</button><button type="button" id="aiRemove">Retirer le texte de la synthèse</button></div><p class="detail-note">Cette saisie reste temporaire dans le navigateur et n’est pas enregistrée dans Grist.</p></div>
    </div>
@@ -725,7 +727,7 @@ function resetAnnualAiEditor(){
  $('aiStatus').textContent='Aucune donnée transmise. Le raccordement sécurisé reste à configurer.';
 }
 function prepareAnnualAi(){
- if(!reportDataset||reportDataset.year!==reportSelectedYear)return;
+ if(!reportDataset||reportDataset.year!==reportSelectedYear){$('aiStatus').textContent='Données Grist indisponibles pour cette année : ouvrez cette page depuis le widget Grist et patientez pendant le chargement.';return}
  preparedAnnualPayload=annualAiPayload(reportDataset);preparedAnnualYear=reportSelectedYear;
  $('aiPayloadPreview').textContent=JSON.stringify(preparedAnnualPayload,null,2);
  $('aiPayloadDetail').open=true;$('aiCopy').disabled=false;$('aiGenerate').disabled=!ANNUAL_AI_SERVICE_URL;
