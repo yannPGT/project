@@ -705,20 +705,30 @@ const approvedAnnualTexts=new Map();
 let preparedAnnualYear='',preparedAnnualPayload=null,annualDraftYear='';
 function annualAiPayload(data){
  const s=data.summary,objectives=S.objectives.filter(o=>yearOf(o)===data.year&&yes(cell(o,['Actif'])));
- return {version:1,year:data.year,generatedAt:new Date().toISOString(),
-  provisional:Number(data.year)>=new Date().getFullYear(),
-  method:'Exercices réalisés ; Direction/Vigilance organisateurs avant 2026 ; Appui exclu.',
-  exercises:{department:{realized:s.dept.real,planned:s.dept.planned,cancelled:s.dept.cancel},
-   zone:{realized:s.zone.real,planned:s.zone.planned,cancelled:s.zone.cancel}},
+ const target=g=>g?{territoriesReachingThreshold:g.reached,territoriesWithIndicator:g.total}:null;
+ return {version:2,year:data.year,generatedAt:new Date().toISOString(),
+  currentYearIncomplete:Number(data.year)>=new Date().getFullYear(),
+  dataQuality:'Année échue ne signifie pas données exhaustives. Bilan dépend des saisies Grist présentes au moment de l’extraction.',
+  method:'Exercices réalisés des organisateurs ; avant 2026 Direction/Vigilance considérées comme organisateurs ; Appui exclu. Chaque niveau est compté séparément.',
+  exercises:{department:{realized:s.dept.real,recordsMarkedPlanned:s.dept.planned,cancelled:s.dept.cancel},
+   zone:{realized:s.zone.real,recordsMarkedPlanned:s.zone.planned,cancelled:s.zone.cancel}},
   previousYear:Number(data.year)>2024?(()=>{const p=annualReportData(String(Number(data.year)-1)).summary;
    return {year:String(Number(data.year)-1),departmentRealized:p.dept.real,zoneRealized:p.zone.real}})():null,
-  objectives:objectives.map(o=>({level:text(cell(o,['Niveau'])),code:objectiveCode(o),title:objectiveName(o)})).slice(0,100),
-  goalAttainment:{departments:s.departmentGoals?{achieved:s.departmentGoals.reached,total:s.departmentGoals.total}:null,
-   zones:s.zoneGoals?{achieved:s.zoneGoals.reached,total:s.zoneGoals.total}:null},
-  risks:{department:data.deptRisk.slice(0,12).map(([name,count])=>({name,count})),
-   zone:data.zoneRisk.slice(0,12).map(([name,count])=>({name,count}))},
-  monthly:data.months,missingDates:data.datesMissing,tools:data.tools,
-  finances:data.finance.available?{requested:data.finance.asked,received:data.finance.received}:null};
+  qualitativeObjectives:objectives.map(o=>({level:text(cell(o,['Niveau'])),code:objectiveCode(o),title:objectiveName(o)})).slice(0,100),
+  quantitativeTerritoryTargets:{meaning:'Nombre de territoires atteignant le seuil annuel du nombre d’exercices réalisés ; ce n’est PAS un taux de réalisation des objectifs qualitatifs.',
+   departments:target(s.departmentGoals),zones:target(s.zoneGoals)},
+  riskCategoryCounts:{meaning:'Catégories des exercices réalisés, certaines fiches pouvant ne pas renseigner de risque.',
+   departmentTotal:s.dept.real,zoneTotal:s.zone.real,
+   departments:data.deptRisk.slice(0,12).map(([name,count])=>({name,count})),
+   zones:data.zoneRisk.slice(0,12).map(([name,count])=>({name,count}))},
+  monthlyRealizedCounts:{months:['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'],
+   counts:data.months,recordsWithoutUsableDate:data.datesMissing},
+  recordedToolFlags:{meaning:'Nombre de fiches d’exercice indiquant chaque dispositif ; une valeur absente ne prouve pas une non-utilisation.',
+   frAlert:data.tools.fr,saipSirens:data.tools.saip,synapse:data.tools.synapse,synergi:data.tools.synergi,cip:data.tools.cip},
+  financeObservations:data.finance.available?{
+   totalRequestsRecordedEuro:data.finance.asked,totalReceivedRecordedEuro:data.finance.received,
+   meaning:'Montants enregistrés dans la table financière des EMIZ. Les deux totaux ne prouvent ni un déficit budgétaire, ni un besoin non financé, ni un taux de couverture des besoins ; le périmètre et le suivi de versement doivent être vérifiés.'
+  }:null};
 }
 function resetAnnualAiEditor(){
  preparedAnnualYear='';preparedAnnualPayload=null;annualDraftYear='';
