@@ -75,3 +75,14 @@ Après déploiement et validation du service, remplacer `const ANNUAL_AI_SERVICE
 5. Cas d'erreur : délai 45 s, 401/403, 429, 503 ; l'état Grist et les chiffres du rapport restent accessibles.
 
 Références : guide https://guides.ia.numerique.gouv.fr/albert-api ; clés https://guides.ia.numerique.gouv.fr/albert-api/compte-and-usage/api-keys ; démarrage https://guides.ia.numerique.gouv.fr/albert-api/prise-en-main/quickstart ; API https://albert.api.etalab.gouv.fr/reference ; droits des widgets https://support.getgrist.com/widget-custom/.
+
+
+## Prompt institutionnel pour L’Assistant — 18 octobre 2026
+
+Dans Comparaison des années → Synthèse annuelle · aide IA, choisir l’année puis « Préparer le document pour L’Assistant ». Copier la consigne et les données, ou télécharger le .txt et le joindre à une conversation. Joindre éventuellement la synthèse 2025 signée comme référence éditoriale ; ses chiffres ne remplacent jamais ceux exportés.
+
+Le prompt DGSCGC-2026-10 définit le plan approfondi, les limites d’interprétation et les repères numérotés des captures/graphique à insérer (vue, filtre, année, périmètre, unité, légende, source). Il retient un style institutionnel sur fond blanc et sans grands bandeaux bleus. Le bloc-marque doit provenir d’un fichier officiel ; aucune signature n’est reproduite. La mise en page réelle dépend des outils de l’assistant.
+
+Le JSON version 3 ajoute les séries disponibles depuis 2024, les natures d’exercice et plans dominants par niveau, les effectifs territoriaux avec activité réalisée, les dispositifs départementaux, DO joué, scolaires, CIP et le focus nucléaire/radiologique. Les règles de comptage du tableau de bord restent inchangées, notamment l’exception PCS/PICS incluant les joueurs. Les résultats qualitatifs non fournis et les données RETEX manquantes sont explicitement à compléter.
+
+Aucun envoi automatique, appel Mistral/Albert ou clé n’est ajouté. La génération effective dans L’Assistant doit encore faire l’objet d’une relecture métier ; les tests locaux valident la construction du document et la cohérence des agrégats, pas le comportement d’un modèle distant.
