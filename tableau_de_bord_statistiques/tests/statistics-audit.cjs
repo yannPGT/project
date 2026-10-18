@@ -11,8 +11,8 @@ const row=(id,year,posture,state,type,risk,territory='01 - Ain',extra={})=>({id,
 ctx.fixture=[
  row(1,2025,'Direction','Réalisé','Terrain','Risques naturels','01 - Ain',{'Plan dominant':'Plan communal de sauvegarde','FR-Alert':'Oui'}),
  row(2,2025,'Vigilance','Réalisé','Cadres','Alerte, commandement et sauvegarde'),
- row(3,2025,'Vigilance','Réalisé','Terrain','Risques naturels'),
- row(4,2025,'Appui','Réalisé','Terrain','PLAYER_ONLY'),
+ row(3,2025,'Vigilance','Réalisé','Terrain','Risques naturels','01 - Ain',{'Plans concourant':'Plan intercommunal de sauvegarde'}),
+ row(4,2025,'Appui','Réalisé','Terrain','PLAYER_ONLY','01 - Ain',{'Plan dominant':'Plan communal de sauvegarde'}),
  row(5,2025,'Direction','Programmé','Terrain','FUTURE_ONLY','01 - Ain',{'Plan dominant':'Plan communal de sauvegarde'}),
  row(6,2025,'Direction','Annulé','Terrain','CANCEL_ONLY'),
  row(7,2025,'Direction','Réalisé',"Exercice d'alerte",'Risques naturels'),
@@ -21,17 +21,22 @@ ctx.fixture=[
  row(10,2025,'Vigilance','Réalisé','Terrain','Alerte, commandement et sauvegarde','ZD-EST - EST'),
  row(11,2026,'Organisateur','Réalisé','Terrain','Risques naturels'),
  row(12,2026,'Organisateur','Réalisé',"Exercice d'alerte",'Risques naturels'),
- row(13,2026,'Joueur','Réalisé','Terrain','PLAYER_2026'),
+ row(13,2026,'Joueur','Réalisé','Terrain','PLAYER_2026','01 - Ain',{'Plan dominant':'Plan intercommunal de sauvegarde'}),
  row(14,2026,'Organisateur','Programmé','Terrain','FUTURE_2026'),
  row(15,2025,'Direction','Réalisé','Terrain','Alerte, commandement et sauvegarde'),
- row(16,2025,'','Réalisé','Terrain','UNKNOWN_ROLE'),
+ row(16,2025,'','Réalisé','Terrain','UNKNOWN_ROLE','01 - Ain',{'Plan dominant':'Plan communal de sauvegarde'}),
  row(17,2025,'Direction','Réalisé','Terrain','Risques naturels','ZD-EST - EST',{'Plan dominant':'Plan communal de sauvegarde'}),
  row(18,2025,'','Réalisé',"Exercice d'alerte",'Non renseigné'),
+ row(19,2025,'Joueur','Réalisé','Terrain','Risques naturels','02 - Aisne',{'Plan dominant':'Plan communal de sauvegarde','Plans concourant':'Plan communal de sauvegarde; Plan intercommunal de sauvegarde'}),
+ row(20,2025,'Joueur','Programmé','Terrain','FUTURE_PLAN','01 - Ain',{'Plan dominant':'Plan intercommunal de sauvegarde'}),
+ row(21,2025,'Joueur','Annulé','Terrain','CANCEL_PLAN','01 - Ain',{'Plan dominant':'Plan communal de sauvegarde'}),
+ row(22,2025,'Joueur','Réalisé',"Exercice d'alerte",'Risques naturels','01 - Ain',{'Plan dominant':'Plan communal de sauvegarde'}),
 ];
 evaluate("S.bdd=fixture;S.admins=[];S.adminById=new Map();S.ind=[];S.objectives=[];S.finance=[];S.year='2025';S.yearMap=new Map();");
 let d=native("comparisonYear('2025')");
 assert.equal(d.dept.real,2);assert.equal(d.dept.planned,1);assert.equal(d.dept.cancel,1);assert.equal(d.zone.real,3);
-assert.deepEqual(d.commandAlerts,{dept:3,zone:1});assert.equal(d.pcs,1);assert.equal(d.alerts.fr,1);
+assert.deepEqual(d.commandAlerts,{dept:3,zone:1});assert.equal(d.pcs,3);assert.equal(d.pics,2);assert.equal(d.alerts.fr,1);
+assert.deepEqual(native("departmentalPlanCounts('2025','code:02')"),{pcs:1,pics:1});
 assert(!JSON.stringify(d.riskCounts).includes('FUTURE_ONLY'));assert(!JSON.stringify(d.riskCounts).includes('CANCEL_ONLY'));assert(!JSON.stringify(d.riskCounts).includes('PLAYER_ONLY'));
 assert.equal(d.typeCounts.reduce((n,x)=>n+x[1],0),5);
 assert.equal(d.typeCounts.find(x=>x[0]==='Cadres')[1],2);
@@ -39,9 +44,13 @@ assert.equal(evaluate('canonicalPosture(S.bdd[2])'),'Joueur');assert.equal(evalu
 evaluate("S.ind=[{Annee:2026,Type_niveau:'Département',Niveau_administratif:'01 - Ain',Nb_Realise:999,Objectif:4}];S.year='2026';comparisonYearCache.clear();");
 assert.equal(evaluate("stat(S.ind[0]).real"),1);assert.equal(evaluate("comparisonYear('2026').dept.real"),1);
 assert.equal(evaluate("comparisonYear('2026').commandAlerts.dept"),1);
+assert.equal(evaluate("comparisonYear('2026').pics"),1);
 evaluate("S.year='2025';comparisonYearCache.clear();renderAll();renderComparison();reportSelectedYear='2025';renderAnnualReport();renderDepartmentDetail();");
 assert(!nodes.deptRisks.innerHTML.includes('FUTURE_ONLY'));assert(!nodes.detailDeptRisks.innerHTML.includes('FUTURE_ONLY'));
 assert(nodes.deptMetrics.innerHTML.includes('chaîne de commandement'));assert(nodes.annualReportBody.innerHTML.includes('alerte de la chaîne de commandement'));
+assert.equal(evaluate("annualAiPayload(annualReportData('2025')).departmentalImplementedPlans.pcsExercises"),3);
+assert(nodes.annualReportBody.innerHTML.includes('PCS et PICS mis en œuvre au niveau départemental'));
+assert(nodes.detailDeptMetrics.innerHTML.includes('Exercices avec PCS'));
 const before=native("comparisonYear('2025')");const plan=native('buildPostureMigration(S.bdd)');
 assert.equal(plan.updates.find(x=>x.id===2).after,'Organisateur');assert.equal(plan.updates.find(x=>x.id===3).after,'Joueur');assert(plan.updates.find(x=>x.id===2).alert);
 assert(!plan.updates.some(x=>x.year>=2026));assert(plan.unresolved.some(x=>x.id===16));
@@ -76,7 +85,7 @@ evaluate("S.year='2025';S.plan='Plan communal de sauvegarde';S.deptTheme='REALIS
  legacyFormula='$Posture == "Direction"';
  await evaluate('previewPostureMigration()');assert.equal(nodes.postureApply.disabled,true);
  await evaluate('applyPostureMigration()');assert.equal(actionBatches,1);assert(nodes.postureStatus.textContent.includes('formules historiques'));
- console.log('Cas contrôlés : réalisés seuls, joueurs exclus, alertes séparées, risques/PCS/plan cartographique, compteurs 2026 recalculés, migration idempotente.');
+ console.log('Cas contrôlés : réalisés seuls, joueurs inclus pour PCS/PICS et exclus des autres décomptes, alertes séparées, plans cartographiques, compteurs 2026 recalculés, migration idempotente.');
  if(!process.env.GRIST_AUDIT_DATA){console.log('Pour vérifier un export local : définir GRIST_AUDIT_DATA vers un JSON {bdd,objectives}. Aucun export réel n’est inclus dans le dépôt.');return}
  const data=JSON.parse(fs.readFileSync(process.env.GRIST_AUDIT_DATA,'utf8'));ctx.realData=data;
  evaluate("S.bdd=realData.bdd.map((r,i)=>({...r,id:i+1}));S.objectives=realData.objectives;S.ind=[];S.admins=[];S.adminById=new Map();S.finance=[];exerciseLedgerCache.clear();comparisonYearCache.clear();reportDataCache.clear();");
