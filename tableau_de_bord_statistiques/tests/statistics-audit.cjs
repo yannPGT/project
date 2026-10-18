@@ -86,6 +86,46 @@ evaluate("S.year='2025';S.plan='Plan communal de sauvegarde';S.deptTheme='REALIS
  await evaluate('previewPostureMigration()');assert.equal(nodes.postureApply.disabled,true);
  await evaluate('applyPostureMigration()');assert.equal(actionBatches,1);assert(nodes.postureStatus.textContent.includes('formules historiques'));
  console.log('Cas contrôlés : réalisés seuls, joueurs inclus pour PCS/PICS et exclus des autres décomptes, alertes séparées, plans cartographiques, compteurs 2026 recalculés, migration idempotente.');
+ // Retards : même population pour les compteurs, les cartes et les listes.
+ ctx.overdueFixture=[
+  row(101,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'17/10/2026',Nom:'Exercice dépassé'}),
+  row(102,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'18/10/2026',Nom:'Exercice du jour'}),
+  row(103,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'19/10/2026'}),
+  row(104,2026,'Organisateur','Réalisé','Terrain','Risques naturels','01 - Ain',{Date:'17/10/2026'}),
+  row(105,2026,'Organisateur','Annulé','Terrain','Risques naturels','01 - Ain',{Date:'17/10/2026'}),
+  row(106,2026,'Joueur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'17/10/2026'}),
+  row(107,2026,'Organisateur','Programmé',"Exercice d'alerte",'Risques naturels','01 - Ain',{Date:'17/10/2026'}),
+  row(108,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:''}),
+  row(109,2026,'Organisateur','Programmé','Cadres','Menaces','ZD-EST - EST',{Date:'16/10/2026',Nom:'Exercice de zone'}),
+  row(110,2026,'Organisateur','Programmé','Cadres','Menaces','ZD-EST - EST',{Date:'18/10/2026'}),
+  row(111,2026,'Organisateur','Programmé','Cadres','Menaces','ZD-GUYANE - GUYANE',{Date:'17/10/2026'}),
+  row(112,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'30/02/2026'}),
+  row(113,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'01/01/2027',Date_programmation:'15/10/2026',Nom:'Programmation prioritaire'}),
+  row(114,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'17/10/2026',Date_programmation:'01/11/2026'}),
+  row(115,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'17/10/2026',Nom:'<img src=x onerror=alert(1)>'}),
+  row(116,2026,'','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'17/10/2026'}),
+  row(117,2025,'Direction','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'17/10/2025',Nom:'Exercice 2025'}),
+  row(119,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:Date.UTC(2026,9,17)/1000}),
+  row(120,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'2026-10-17'}),
+ ];
+ ctx.testToday='2026-10-18';
+ evaluate("const savedParisToday=parisToday;parisToday=()=>testToday;S.bdd=overdueFixture;S.ind=[];S.objectives=[];S.year='2026';exerciseLedgerCache.clear();comparisonYearCache.clear();reportDataCache.clear();renderOverdueOverview();");
+ assert.equal(evaluate("overdueExercises('dept').length"),5);assert.equal(evaluate("overdueExercises('emiz').length"),1);
+ assert.equal(evaluate("departments().reduce((n,r)=>n+stat(r).late,0)"),5);
+ assert.equal(evaluate("emizRows().reduce((n,r)=>n+stat(r,'emiz').late,0)"),1);
+ assert.equal(nodes.deptOverdueCount.textContent,'5');assert.equal(nodes.emizOverdueCount.textContent,'1');
+ assert(nodes.deptOverdueRows.innerHTML.includes('Programmation prioritaire'));
+ assert(nodes.deptOverdueRows.innerHTML.indexOf('15/10/2026')<nodes.deptOverdueRows.innerHTML.indexOf('17/10/2026'));
+ assert(!nodes.deptOverdueRows.innerHTML.includes('<img'));assert(nodes.deptOverdueRows.innerHTML.includes('&lt;img'));
+ assert(!nodes.deptOverdueRows.innerHTML.includes('Exercice du jour'));
+ assert(nodes.emizOverdueRows.innerHTML.includes('Exercice de zone')&&nodes.emizOverdueRows.innerHTML.includes('Cadres'));
+ ctx.testToday='2026-10-19';
+ assert.equal(evaluate("overdueExercises('dept').length"),6);assert.equal(evaluate("overdueExercises('emiz').length"),2);
+ evaluate("S.year='2025';renderOverdueOverview();");
+ assert.equal(nodes.deptOverdueCount.textContent,'1');assert(nodes.deptOverdueRows.innerHTML.includes('Exercice 2025'));
+ assert.equal(nodes.emizOverdueCount.textContent,'0');assert(nodes.emizOverdueRows.innerHTML.includes('Aucun exercice en retard'));
+ evaluate('parisToday=savedParisToday;');
+ console.log('Retards vérifiés : dates dépassées, filtre année/rôle/état, listes triées, dates explicites/ISO/Unix, échappement et changement de jour.');
  if(!process.env.GRIST_AUDIT_DATA){console.log('Pour vérifier un export local : définir GRIST_AUDIT_DATA vers un JSON {bdd,objectives}. Aucun export réel n’est inclus dans le dépôt.');return}
  const data=JSON.parse(fs.readFileSync(process.env.GRIST_AUDIT_DATA,'utf8'));ctx.realData=data;
  evaluate("S.bdd=realData.bdd.map((r,i)=>({...r,id:i+1}));S.objectives=realData.objectives;S.ind=[];S.admins=[];S.adminById=new Map();S.finance=[];exerciseLedgerCache.clear();comparisonYearCache.clear();reportDataCache.clear();");
