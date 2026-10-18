@@ -7,11 +7,11 @@ Contrôle du code de `tableau_de_bord_statistiques/index.html` (version de dépa
 ## Règles appliquées dans toutes les vues
 
 - Les volumes réalisés, programmés et annulés restent présentés séparément.
-- Seuls les exercices **réalisés par un organisateur**, hors alertes de la chaîne de commandement, alimentent les détails : types d'exercice, catégories et risques, plans dominants et concourants, PCS/PICS, DO, scolaires, CIP, participation et dispositifs d'alerte.
+- Seuls les exercices **réalisés par un organisateur**, hors alertes de la chaîne de commandement, alimentent les détails : types d'exercice, catégories et risques, plans dominants, DO, scolaires, CIP, participation et dispositifs d'alerte.
 - Les alertes de la chaîne de commandement réalisées disposent d'un **compteur indépendant** ; elles ne contribuent ni au volume ordinaire, ni aux objectifs quantitatifs, ni aux autres détails. Les alertes explicites réalisées sans posture sont conservées dans ce seul compteur ; aucune posture ne leur est attribuée.
 - Tous les comptes quantitatifs et les cartes sont recalculés depuis BDD_SYNAPSE_2026, quelle que soit l'année. Les anciens totaux précalculés ne remplacent plus ces comptes.
 - Les objectifs quantitatifs utilisent le seuil annuel présent dans l'indicateur, avec le repli défini pour le widget (4 départemental, 2 zonal).
-- Une fiche avec PCS/PICS est comptée une fois pour chaque plan concerné, au niveau départemental. Le sélecteur cartographique « Plan mis en œuvre » utilise également les seuls réalisés départementaux.
+- Exception validée le 18 octobre 2026 : les compteurs départementaux PCS/PICS prennent les exercices réalisés en posture **Organisateur ou Joueur**, hors alertes de la chaîne de commandement. Le plan peut être dominant ou concourant. Une fiche est comptée une fois pour chaque plan concerné, même si le même plan apparaît dans les deux champs. Cette règle est appliquée à la synthèse départementale, à la vue d'un département, à la comparaison et au document pour L’Assistant. Le sélecteur cartographique « Plan mis en œuvre » utilise également les seuls réalisés départementaux.
 - Les types « Cadre/Cadres » et « Combiné cadre/cadres et terrain » sont regroupés. L'alerte radio reconnaît le champ « radios conventionnées ». Les plans référencés sont résolus avant comptage PCS/PICS.
 - La lecture globale des objectifs qualitatifs tient compte des groupes d'alternatives (`Groupe_objectif`) : OU au sein du groupe, plusieurs groupes à couvrir. Le rapport de référence fourni confirme cette alternative pour NOVI/POP en 2025.
 
@@ -46,7 +46,7 @@ Aucune session Grist pilotable n'étant disponible pendant ce contrôle, **la mi
 
 `node tableau_de_bord_statistiques/tests/statistics-audit.cjs`
 
-Les tests synthétiques vérifient les filtres de statut et de rôle, les alertes indépendantes, les comptes PCS/PICS et cartographiques, les comptes 2026 malgré un indicateur précalculé erroné, les alternatives qualitatives, la validation des dates, la lecture des montants français, la prévisualisation sans écriture, les actions Grist de migration, la sauvegarde de l'origine, l'absence de modification des années récentes, le blocage en présence de formules historiques et l'idempotence.
+Les tests synthétiques vérifient les filtres de statut et de rôle, les alertes indépendantes, les comptes PCS/PICS incluant les joueurs (Appui et Vigilance hors alerte historiques compris), les PCS/PICS d'un département joueur sans exercice organisé, l'exclusion des programmés/annulés et le comptage unique dominant/concourant, les comptes cartographiques, les comptes 2026 malgré un indicateur précalculé erroné, les alternatives qualitatives, la validation des dates, la lecture des montants français, la prévisualisation sans écriture, les actions Grist de migration, la sauvegarde de l'origine, l'absence de modification des années récentes, le blocage en présence de formules historiques et l'idempotence.
 
 Le même test accepte un export local `{bdd:[...],objectives:[...]}` via la variable d'environnement `GRIST_AUDIT_DATA`. Il vérifie alors la concordance générale / détails / comparaison / synthèse annuelle sur 2024, 2025 et 2026 et l'identité des résultats avant/après normalisation. Aucun jeu de données réel n'est inclus.
 
