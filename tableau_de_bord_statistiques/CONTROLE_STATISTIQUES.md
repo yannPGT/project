@@ -15,6 +15,14 @@ Contrôle du code de `tableau_de_bord_statistiques/index.html` (version de dépa
 - Les types « Cadre/Cadres » et « Combiné cadre/cadres et terrain » sont regroupés. L'alerte radio reconnaît le champ « radios conventionnées ». Les plans référencés sont résolus avant comptage PCS/PICS.
 - La lecture globale des objectifs qualitatifs tient compte des groupes d'alternatives (`Groupe_objectif`) : OU au sein du groupe, plusieurs groupes à couvrir. Le rapport de référence fourni confirme cette alternative pour NOVI/POP en 2025.
 
+## Retards dans la vue générale
+
+Deux compteurs ouvrent les listes départementales et zonales correspondantes. La liste indique le territoire, le nom, la nature de l'exercice et la date de programmation, par date croissante.
+
+Le retard concerne les exercices d'organisateurs encore au statut **Programmé**, hors alertes de la chaîne de commandement, dont la date de programmation est strictement antérieure à la date courante en France métropolitaine (Europe/Paris), pour l'année sélectionnée. Les exercices réalisés, annulés, joueurs, sans date exploitable ou prévus aujourd'hui/futurement sont exclus. Les zones hors périmètre EMIZ restent exclues de la liste zonale.
+
+Une colonne explicite de programmation est prioritaire si renseignée ; sinon la colonne Date est utilisée. Le calcul est commun aux listes, aux indicateurs territoriaux et à la carte des retards. Le cache est recalculé lorsque la date de référence change, sans relecture périodique du classeur.
+
 ## Normalisation historique (2025 et avant)
 
 | Posture initiale | Posture normalisée | Traitement |
@@ -46,7 +54,7 @@ Aucune session Grist pilotable n'étant disponible pendant ce contrôle, **la mi
 
 `node tableau_de_bord_statistiques/tests/statistics-audit.cjs`
 
-Les tests synthétiques vérifient les filtres de statut et de rôle, les alertes indépendantes, les comptes PCS/PICS incluant les joueurs (Appui et Vigilance hors alerte historiques compris), les PCS/PICS d'un département joueur sans exercice organisé, l'exclusion des programmés/annulés et le comptage unique dominant/concourant, les comptes cartographiques, les comptes 2026 malgré un indicateur précalculé erroné, les alternatives qualitatives, la validation des dates, la lecture des montants français, la prévisualisation sans écriture, les actions Grist de migration, la sauvegarde de l'origine, l'absence de modification des années récentes, le blocage en présence de formules historiques et l'idempotence.
+Les tests synthétiques vérifient les filtres de statut et de rôle, les alertes indépendantes, les comptes PCS/PICS incluant les joueurs (Appui et Vigilance hors alerte historiques compris), les PCS/PICS d'un département joueur sans exercice organisé, l'exclusion des programmés/annulés et le comptage unique dominant/concourant, les comptes cartographiques, les comptes 2026 malgré un indicateur précalculé erroné, les alternatives qualitatives, la validation des dates, les listes de retards (années, rôles, états, date explicite prioritaire, ISO/Unix, tri, changement de jour et échappement du texte), la lecture des montants français, la prévisualisation sans écriture, les actions Grist de migration, la sauvegarde de l'origine, l'absence de modification des années récentes, le blocage en présence de formules historiques et l'idempotence.
 
 Le même test accepte un export local `{bdd:[...],objectives:[...]}` via la variable d'environnement `GRIST_AUDIT_DATA`. Il vérifie alors la concordance générale / détails / comparaison / synthèse annuelle sur 2024, 2025 et 2026 et l'identité des résultats avant/après normalisation. Aucun jeu de données réel n'est inclus.
 
