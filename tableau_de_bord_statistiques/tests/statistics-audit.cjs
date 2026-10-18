@@ -87,6 +87,26 @@ evaluate("S.year='2025';S.plan='Plan communal de sauvegarde';S.deptTheme='REALIS
  await evaluate('applyPostureMigration()');assert.equal(actionBatches,1);assert(nodes.postureStatus.textContent.includes('formules historiques'));
  console.log('Cas contrôlés : réalisés seuls, joueurs inclus pour PCS/PICS et exclus des autres décomptes, alertes séparées, plans cartographiques, compteurs 2026 recalculés, migration idempotente.');
  // Retards : même population pour les compteurs, les cartes et les listes.
+
+ // Le document Assistant conserve les règles de comptage et les séries structurées.
+ evaluate("S.bdd=fixture;S.year='2025';S.ind=[];S.objectives=[];S.finance=[];exerciseLedgerCache.clear();comparisonYearCache.clear();reportDataCache.clear();");
+ const aiPayload=native("annualAiPayload(annualReportData('2025'))");
+ assert.equal(aiPayload.version,3);
+ assert.equal(aiPayload.departmentalImplementedPlans.pcsExercises,3);
+ assert.equal(aiPayload.exerciseNatureCounts.departments.reduce((n,r)=>n+r.count,0),aiPayload.exercises.department.realized);
+ assert.equal(aiPayload.territoryRealizedCounts.zones.reduce((n,r)=>n+r.count,0),aiPayload.exercises.zone.realized);
+ assert.deepEqual(aiPayload.historicalSeries.map(r=>r.year),['2024','2025']);
+ assert.equal(aiPayload.historicalSeries[1].departmentRealized,aiPayload.exercises.department.realized);
+ assert.equal(aiPayload.departmentalParticipationAndDevices.cipExercises,evaluate("comparisonYear('2025').alerts.cip"));
+ ctx.aiPayloadForDocument=aiPayload;
+ const assistantDoc=evaluate("annualAssistantDocument(aiPayloadForDocument)");
+ assert(assistantDoc.includes('Aucun grand bandeau bleu'));
+ assert(assistantDoc.includes('[FIGURE F01 À INSÉRER'));
+ assert(assistantDoc.includes('Brouillon à valider par le service'));
+ const jsonPart=assistantDoc.split('DÉBUT DES DONNÉES JSON À ANALYSER (agrégats et intitulés uniquement)\n')[1].split('\nFIN DES DONNÉES JSON')[0];
+ assert.deepEqual(JSON.parse(jsonPart),aiPayload);
+ console.log('Export Assistant vérifié : prompt institutionnel, figures, séries annuelles, nature/territoires et exception PCS/PICS.');
+
  ctx.overdueFixture=[
   row(101,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'17/10/2026',Nom:'Exercice dépassé'}),
   row(102,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'18/10/2026',Nom:'Exercice du jour'}),
