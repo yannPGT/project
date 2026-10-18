@@ -2,6 +2,12 @@
 
 État au 17 octobre 2026 : le widget prépare un document texte (consigne + JSON agrégé). Aucun appel à Albert n'est activé. Aucune clé et aucune donnée d'exercice individuelle ne figurent dans ce fichier.
 
+## Périmètre des statistiques après le contrôle du 18 octobre 2026
+
+Le document préparé utilise les fiches d'organisateurs selon les règles historiques validées. Les détails (types, risques, plans, dispositifs, PCS/PICS) portent uniquement sur les exercices réalisés, hors exercices d'alerte de la chaîne de commandement. Ces alertes sont indiquées dans `commandChainAlerts` et ne doivent jamais être ajoutées aux totaux ordinaires. Les alertes explicites réalisées dont la posture est vide sont conservées dans ce compteur séparé, sans affectation de rôle. Les postures inconnues sont signalées dans `unresolvedPostures`.
+
+Les objectifs d'un même `alternativeGroup` sont des alternatives. Les couvertures qualitatives restent issues des indicateurs Grist et leurs formules nécessitent un contrôle séparé. Les montants financiers restent ceux de la table financière et ne sont pas limités aux seuls exercices réalisés.
+
 ## Circuit conseillé avec L’Assistant de la DINUM
 
 1. Ouvrir « Comparaison des années » → « Synthèse annuelle », choisir l'année, cliquer « Préparer le document pour L’Assistant ». Vérifier la consigne et les agrégats sous « Voir le document ».
@@ -48,7 +54,7 @@ Navigateur Grist → widget hébergé sur GitHub Pages → service institutionne
 ## Contrat du service
 
 - Route envisagée : `POST /api/syntheses-annuelles/rediger` sur un domaine institutionnel HTTPS.
-- Entrée : JSON produit par `annualAiPayload(data)` dans `index.html`. Champs : `version=2`, `year`, `generatedAt`, `currentYearIncomplete`, `dataQuality`, `method`, `exercises`, `previousYear`, `qualitativeObjectives`, `quantitativeTerritoryTargets`, `riskCategoryCounts`, `monthlyRealizedCounts`, `recordedToolFlags`, `financeObservations`. Il s'agit d'agrégats et d'intitulés d'objectifs, sans enregistrement individuel.
+- Entrée : JSON produit par `annualAiPayload(data)` dans `index.html`. Champs : `version=2`, `year`, `generatedAt`, `currentYearIncomplete`, `dataQuality`, `method`, `exercises`, `previousYear`, `qualitativeObjectives`, `quantitativeTerritoryTargets`, `riskCategoryCounts`, `commandChainAlerts`, `unresolvedPostures`, `monthlyRealizedCounts`, `recordedToolFlags`, `financeObservations`. Il s'agit d'agrégats et d'intitulés d'objectifs, sans enregistrement individuel.
 - Sortie : `{"year":"2025","draft":"Texte français à relire…"}`. Texte brut, 1 à 12 000 caractères. En cas d'erreur, code HTTP non 2xx ; ne renvoyer aucun secret ni détail interne.
 - Le serveur valide le schéma et la taille de la requête, contrôle année et valeurs, refuse les champs inattendus, impose un budget et un quota, et journalise uniquement les métadonnées nécessaires, sans contenu sensible.
 - Le serveur choisit le modèle disponible avec `GET /v1/models` lors de sa configuration (type `text-generation`), puis appelle Albert avec `Authorization: Bearer <clé stockée dans un coffre de secrets serveur>`, `messages` et `model`.
