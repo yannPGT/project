@@ -124,6 +124,32 @@ evaluate("S.year='2025';S.plan='Plan communal de sauvegarde';S.deptTheme='REALIS
  evaluate("S.year='2025';renderOverdueOverview();");
  assert.equal(nodes.deptOverdueCount.textContent,'1');assert(nodes.deptOverdueRows.innerHTML.includes('Exercice 2025'));
  assert.equal(nodes.emizOverdueCount.textContent,'0');assert(nodes.emizOverdueRows.innerHTML.includes('Aucun exercice en retard'));
+
+ ctx.testToday='2026-10-18';
+ ctx.sortFixture=[
+  row(201,2026,'Organisateur','Programmé','Terrain','Risques naturels','02 - Aisne',{Date:'14/10/2026',Nom:'Aisne ancien'}),
+  row(202,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'17/10/2026',Nom:'Ain récent'}),
+  row(203,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Date:'15/10/2026',Nom:'Ain ancien'}),
+  row(204,2026,'Organisateur','Programmé','Cadres','Menaces','ZD-NORD - NORD',{Date:'14/10/2026',Nom:'Nord ancien'}),
+  row(205,2026,'Organisateur','Programmé','Cadres','Menaces','ZD-EST - EST',{Date:'16/10/2026',Nom:'Est récent'})
+ ];
+ evaluate("S.year='2026';S.bdd=sortFixture;renderOverdueOverview();");
+ assert.deepEqual(native("sortedOverdueExercises('dept').map(r=>r.id)"),[201,203,202]);
+ assert.deepEqual(native("sortedOverdueExercises('dept','territory').map(r=>r.id)"),[203,202,201]);
+ el('deptOverdueSort').value='territory';
+ evaluate("renderOverdueOverview();");
+ assert(nodes.deptOverdueRows.innerHTML.indexOf('Ain ancien')<nodes.deptOverdueRows.innerHTML.indexOf('Ain récent'));
+ assert(nodes.deptOverdueRows.innerHTML.indexOf('Ain récent')<nodes.deptOverdueRows.innerHTML.indexOf('Aisne ancien'));
+ assert(nodes.emizOverdueRows.innerHTML.indexOf('Nord ancien')<nodes.emizOverdueRows.innerHTML.indexOf('Est récent'));
+ el('emizOverdueSort').value='territory';
+ evaluate("renderOverdueOverview();");
+ assert(nodes.emizOverdueRows.innerHTML.indexOf('Est récent')<nodes.emizOverdueRows.innerHTML.indexOf('Nord ancien'));
+ assert.equal(nodes.deptOverdueCount.textContent,'3');assert.equal(nodes.emizOverdueCount.textContent,'2');
+ el('deptOverdueSort').value='date';el('emizOverdueSort').value='date';
+ evaluate("renderOverdueOverview();");
+ assert(nodes.deptOverdueRows.innerHTML.indexOf('Aisne ancien')<nodes.deptOverdueRows.innerHTML.indexOf('Ain ancien'));
+ console.log('Tri vérifié : date par défaut, regroupement par territoire puis date, choix indépendants et totaux inchangés.');
+
  evaluate('parisToday=savedParisToday;');
  console.log('Retards vérifiés : dates dépassées, filtre année/rôle/état, listes triées, dates explicites/ISO/Unix, échappement et changement de jour.');
  if(!process.env.GRIST_AUDIT_DATA){console.log('Pour vérifier un export local : définir GRIST_AUDIT_DATA vers un JSON {bdd,objectives}. Aucun export réel n’est inclus dans le dépôt.');return}
