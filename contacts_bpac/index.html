@@ -7,7 +7,7 @@
 
 .quality-badges{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.quality{display:inline-block;font-size:12px;padding:3px 7px;line-height:1.5}.quality-ok{color:#18753c;background:#dffee6}.quality-warning{color:#716043;background:#fef7da}.quality-danger{color:#a94600;background:#fff1e5}.confirmation-list{max-height:48vh;overflow:auto;margin-bottom:16px}.confirmation-service{padding:15px 0;border-top:1px solid #ddd}.confirmation-service p{font-size:13px;overflow-wrap:anywhere}.confirmation-service td label{margin:0;white-space:nowrap}#my-territory{white-space:nowrap}
 
-</style></head><body>
+</style><script src="vendor/libphonenumber.js?v=90a74672"></script></head><body>
 <header><div><div class="eyebrow">DGSCGC · BPAC</div><h1>Annuaire des partenaires</h1><div class="muted">Coordonnées professionnelles et suivi de l’actualisation</div></div><div><span id="mode" class="badge">Démonstration</span><div class="actions"><button class="secondary" id="my-territory">Mon territoire</button><button class="secondary" id="reload">Actualiser les données</button></div></div></header>
 <nav role="tablist" aria-label="Rubriques"><button role="tab" aria-selected="true" data-tab="home">Accueil</button><button role="tab" aria-selected="false" data-tab="directory">Annuaire</button><button role="tab" aria-selected="false" data-tab="updates">Actualisation</button></nav>
 <main><div id="notice" class="notice"></div><div id="view" role="tabpanel"></div></main><div id="message" role="status" aria-live="polite"></div>
@@ -21,7 +21,17 @@
  const active=p=>p.Actif===true||p.Actif===1||p.Actif==='true';
  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  function emails(value){return String(value||'').split(/[;,\n]+/).map(s=>s.trim()).filter(Boolean);}
- const valid=s=>/^[^\s@<>;,]+@[^\s@<>;,]+\.[^\s@<>;,]+$/.test(s)&&!/[\r\n]/.test(s);
+ const valid=s=>{
+  if(typeof s!=='string'||s.length>254||/[\s<>]/.test(s))return false;
+  const parts=s.split('@');if(parts.length!==2)return false;
+  const [local,originalDomain]=parts;if(!local||local.length>64||!originalDomain)return false;
+  if(!/^[a-zA-Z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+\/=?^_`{|}~-]+)*$/.test(local))return false;
+  let domain=originalDomain;
+  if(/[^\x00-\x7f]/.test(domain)){try{if(/[\/\\:#?%\[\]]/.test(domain))return false;domain=new URL('https://'+domain).hostname;}catch(error){return false;}}
+  if(domain.length>253)return false;
+  const labels=domain.split('.');if(labels.length<2||labels.some(label=>!/^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])$/.test(label)))return false;
+  return /^(?:[a-zA-Z]{2,63}|xn--[a-zA-Z0-9-]{2,59})$/.test(labels.at(-1));
+ };
  function addresses(value){return emails(value).filter(valid);}
  function unique(values){return [...new Map(values.map(s=>[s.toLowerCase(),s])).values()];}
  function rows(table){return (table.id||[]).map((id,i)=>Object.fromEntries(Object.keys(table).map(k=>[k,table[k][i]])));}
@@ -128,7 +138,7 @@ function home(){const c=C.coverage(data),zs=data.Zones.filter(z=>z.Attendu),with
 function directory(){const shown=data.Territoires.filter(t=>(!zone||String(t.Zone)===zone)&&(!kind||t.Type===kind)&&matches(t));const items=[...shown.map(t=>({key:t.UID,label:t.Code+' · '+t.Nom})),...data.Zones.filter(z=>(!zone||String(z.id)===zone)&&(!kind||kind==='Zonal')&&(!search||C.norm(z.Nom+' '+data.Entites.filter(e=>e.Zone===z.id&&e.Type==='Zonal').map(e=>e.Libelle+' '+people(e).map(p=>p.Nom+' '+p.Prenom+' '+p.Fonction).join(' ')).join(' ')).includes(C.norm(search)))).map(z=>({key:'Z:'+z.id,label:'État-major · '+z.Nom})),...data.Entites.filter(e=>e.Type==='DGSCGC'&&C.active(e)&&(!kind||kind==='DGSCGC')&&!zone&&(!search||C.norm(e.Libelle+' '+e.Missions+' '+people(e).map(p=>p.Nom+' '+p.Prenom+' '+p.Fonction).join(' ')).includes(C.norm(search)))).map(e=>({key:'E:'+e.id,label:e.Libelle}))];if(!items.some(i=>i.key===selected))selected=items[0]?.key||'';$('#view').innerHTML=`<h2>Annuaire</h2><div class="toolbar"><input id="search" aria-label="Recherche" placeholder="Nom, fonction, service, territoire…" value="${esc(search)}"><select id="zone" aria-label="Zone"><option value="">Toutes les zones</option>${data.Zones.map(z=>`<option value="${z.id}" ${String(z.id)===zone?'selected':''}>${esc(z.Nom)}</option>`).join('')}</select><select id="kind" aria-label="Type"><option value="">Tous les périmètres</option>${['Departement','Collectivite','Particulier','Zonal','DGSCGC'].map(k=>`<option ${k===kind?'selected':''} value="${k}">${({Departement:'Départements',Collectivite:'Collectivités et territoires',Particulier:'Entités particulières',Zonal:'États-majors zonaux',DGSCGC:'Services DGSCGC'})[k]}</option>`).join('')}</select></div><div class="directory"><aside class="territories" aria-label="Liste des fiches">${items.map(i=>`<button data-select="${esc(i.key)}" class="${selected===i.key?'current':''}" aria-pressed="${selected===i.key}">${esc(i.label)}</button>`).join('')||'<div class="empty">Aucun résultat</div>'}</aside><section>${detail()}</section></div>`;$('#search').oninput=e=>{const pos=e.target.selectionStart;search=e.target.value;directory();bind();$('#search').focus();$('#search').setSelectionRange(pos,pos);};$('#zone').onchange=e=>{zone=e.target.value;directory();bind();};$('#kind').onchange=e=>{kind=e.target.value;directory();bind();};}
 function matches(t){if(!search)return true;const es=ents(t);return C.norm([t.Nom,t.Code,zoneName(t.Zone),...es.flatMap(e=>[e.Libelle,e.Missions,...people(e).flatMap(p=>[p.Nom,p.Prenom,p.Fonction])])].join(' ')).includes(C.norm(search));}
 function detail(){if(!selected)return '<div class="empty">Aucune fiche ne correspond aux filtres.</div>';let title='',subtitle='',entities=[];if(selected.startsWith('Z:')){const z=data.Zones.find(z=>z.id===Number(selected.slice(2)));if(!z)return '';title='État-major · '+z.Nom;subtitle='Contacts zonaux distincts des départements rattachés';entities=data.Entites.filter(e=>e.Zone===z.id&&e.Type==='Zonal'&&C.active(e));}else if(selected.startsWith('E:')){entities=data.Entites.filter(e=>e.id===Number(selected.slice(2)));title=entities[0]?.Libelle;}else{const t=data.Territoires.find(t=>t.UID===selected);if(!t)return '';title=t.Code+' · '+t.Nom;subtitle=zoneName(t.Zone)+(t.Attendu?' · inclus dans la couverture':' · hors indicateurs territoriaux');entities=ents(t);}return `<div class="panel"><h2>${esc(title)}</h2><p class="muted">${esc(subtitle)}</p><button data-compose="${esc(selected)}">Préparer un courriel</button></div>${entities.map(e=>entityCard(e)).join('')||'<div class="empty">Aucun service renseigné.</div>'}${selected.startsWith('Z:')?`<div class="panel"><h3>Territoires rattachés</h3><div class="list">${data.Territoires.filter(t=>String(t.Zone)===selected.slice(2)).map(linkTerr).join('')}</div></div>`:''}`;}
-function entityCard(e){return `<section class="panel entity sub"><h3>${esc(e.Libelle)}</h3>${e.ARevoir?'<p class="badge">Fiche source multiple · examen avant fusion</p>':''}<p>${esc(e.Missions||'')}</p><p>Adresse générique : ${esc(e.Courriel||'Non renseignée')}</p><p>Téléphones : ${esc([e.Telephone,e.Telephone2].filter(Boolean).join(' · ')||'Non renseignés')}</p><small>Confirmation : ${esc(e.ConfirmeLe||'À effectuer')} · ${people(e).length} personne(s) active(s)</small><div class="actions"><button class="secondary" data-copy="${esc(e.Courriel)}">Copier</button><button class="secondary" data-edit="Entites:${e.id}">Modifier le service</button><button class="secondary" data-confirm="${e.id}">Confirmer les coordonnées</button><button class="secondary" data-add="${e.id}">Ajouter une personne</button></div><div class="cards sub">${people(e).map(p=>`<article class="card"><h3>${esc(p.Prenom+' '+p.Nom)}</h3><p>${esc(p.Fonction||'Fonction à renseigner')}</p><p>${esc(p.Courriel||'Courriel à renseigner')}</p><p>Bureau : ${esc(p.Telephone||'Non renseigné')}</p><p>Portable : ${esc(p.TelephonePortable||'Non renseigné')}</p><div class="actions"><button data-person-mail="${p.id}" class="secondary">Écrire</button><button data-copy="${esc(p.Courriel)}" class="secondary">Copier</button><button data-edit="Personnes:${p.id}" class="secondary">Modifier</button>${contactPhoneChoices(p).length?`<button type="button" class="secondary" data-call-person="${p.id}">Appeler</button>`:''}</div></article>`).join('')||'<p class="muted">Aucune personne active renseignée.</p>'}</div></section>`;}
+function entityCard(e){return `<section class="panel entity sub"><h3>${esc(e.Libelle)}</h3>${e.ARevoir?'<p class="badge">Fiche source multiple · examen avant fusion</p>':''}<p>${esc(e.Missions||'')}</p><p>Adresse générique : ${esc(e.Courriel||'Non renseignée')}</p><p>Téléphones : ${esc([e.Telephone,e.Telephone2].filter(Boolean).join(' · ')||'Non renseignés')}</p><small>Confirmation : ${esc(e.ConfirmeLe||'À effectuer')} · ${people(e).length} personne(s) active(s)</small><div class="actions"><button class="secondary" data-copy="${esc(e.Courriel)}">Copier</button><button class="secondary" data-edit="Entites:${e.id}">Modifier le service</button><button class="secondary" data-confirm="${e.id}">Confirmer les coordonnées</button><button class="secondary" data-add="${e.id}">Ajouter une personne</button></div><div class="cards sub">${people(e).map(p=>`<article class="card"><h3>${esc(p.Prenom+' '+p.Nom)}</h3><p>${esc(p.Fonction||'Fonction à renseigner')}</p><p>${esc(p.Courriel||'Courriel à renseigner')}</p><p>Bureau : ${esc(contactPhoneDisplay(p.Telephone,p))}</p><p>Portable : ${esc(contactPhoneDisplay(p.TelephonePortable,p,true))}</p><div class="actions"><button data-person-mail="${p.id}" class="secondary">Écrire</button><button data-copy="${esc(p.Courriel)}" class="secondary">Copier</button><button data-edit="Personnes:${p.id}" class="secondary">Modifier</button>${contactPhoneChoices(p).length?`<button type="button" class="secondary" data-call-person="${p.id}">Appeler</button>`:''}</div></article>`).join('')||'<p class="muted">Aucune personne active renseignée.</p>'}</div></section>`;}
 function requestTable(rs){return `<div class="tablewrap"><table><thead><tr><th>Service</th><th>Date</th><th>Suivi déclaré</th><th>Action</th></tr></thead><tbody>${rs.map(d=>`<tr><td>${esc(data.Entites.find(e=>e.id===d.Entite)?.Libelle||'Service inaccessible')}</td><td>${esc(d.CreeLe)}</td><td>${esc(d.EtatMessage)} · ${esc(d.Statut)}</td><td>${d.Statut==='Ouverte'?`<button class="secondary" data-resolve="${d.id}">Retour reçu</button>`:''}</td></tr>`).join('')||'<tr><td colspan="4">Aucune demande</td></tr>'}</tbody></table></div>`;}
 function updates(){$('#view').innerHTML=`<h2>Actualisation</h2><div class="notice">Les corrections sont immédiates après écriture réussie. Les nouvelles entrées du journal enregistrent automatiquement le compte connecté ; l’historique GRIST constitue la trace de référence du compte authentifié.</div><div class="columns"><section class="panel"><h3>Préparer une vérification</h3><label>Service<select id="verify-entity">${data.Entites.filter(C.active).map(e=>`<option value="${e.id}">${esc(e.Libelle)}</option>`).join('')}</select></label><button id="verify">Préparer la demande</button><p class="muted">Préparation, ouverture du logiciel et envoi réel restent distincts. Le retour est enregistré manuellement.</p></section><section class="panel"><h3>Paramètres BPAC</h3><label>Fréquence de vérification (jours)<input id="frequency" type="number" min="1" max="3650" value="${days()}"></label><label>URL du widget dans le document GRIST<input id="baseurl" type="url" placeholder="https://grist…/document/p/page" value="${esc(data.Parametres.find(r=>r.Cle==='UrlFiche')?.Valeur||'')}"></label><button id="settings">Enregistrer les paramètres</button></section></div><section class="panel sub"><h3>Suivi des demandes</h3>${requestTable(data.Demandes)}</section><section class="panel sub"><h3>Historique des actions du widget</h3><div class="history">${[...data.Historique].reverse().map(h=>`<details><summary>${esc(h.Date)} · ${esc(h.AuteurCompte||h.AuteurDeclare)} · ${esc(h.Action)} · ${esc(h.TableCible)} #${h.Ligne}</summary><pre>${esc(h.Changements)}</pre></details>`).join('')||'<p class="muted">Aucune modification enregistrée.</p>'}</div></section>`;$('#verify').onclick=()=>verify(Number($('#verify-entity').value));$('#settings').onclick=async()=>{const n=Number($('#frequency').value),url=$('#baseurl').value.trim();if(!Number.isInteger(n)||n<1||n>3650)return say('La fréquence doit être comprise entre 1 et 3650 jours.');if(url&&!/^https:\/\//.test(url))return say('Le lien doit commencer par https://.');const actions=[['FrequenceJours',String(n)],['UrlFiche',url]].map(([k,v])=>{const p=data.Parametres.find(r=>r.Cle===k);return ['UpdateRecord','Parametres',p.id,{Valeur:v}];});await write(actions,'Paramètres enregistrés.');};}
 function bind(){document.querySelectorAll('[data-territory]').forEach(b=>b.onclick=()=>navigate(b.dataset.territory));document.querySelectorAll('[data-zone]').forEach(b=>b.onclick=()=>{selected='Z:'+b.dataset.zone;tab='directory';search='';zone='';kind='';render();});document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>{selected=b.dataset.select;render();});document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copy(C.unique(C.addresses(b.dataset.copy)).join('; ')));document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const [t,id]=b.dataset.edit.split(':');edit(t,Number(id));});document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>edit('Personnes',null,Number(b.dataset.add)));document.querySelectorAll('[data-confirm]').forEach(b=>b.onclick=()=>confirmEntity(Number(b.dataset.confirm)));document.querySelectorAll('[data-compose]').forEach(b=>b.onclick=()=>compose(b.dataset.compose));document.querySelectorAll('[data-person-mail]').forEach(b=>b.onclick=()=>compose('P:'+b.dataset.personMail));document.querySelectorAll('[data-resolve]').forEach(b=>b.onclick=()=>resolveDemand(Number(b.dataset.resolve)));}
@@ -365,8 +375,9 @@ write=async function(actions,success){
 <script>
 function contactPhoneChoices(person){
  return [['Portable',person.TelephonePortable],['Bureau',person.Telephone]].flatMap(([label,value])=>{
-  const display=String(value||'').trim();if(!/^[+\d ().\-]+$/.test(display))return [];
-  const number=display.replace(/[ ().\-]/g,'');return /^\+?\d{3,15}$/.test(number)?[{label,display,number}]:[];
+  const result=validateContactPhone(value,contactPhoneCountry(person),label==='Portable');
+  if(!result.valid||!result.formatted)return [];
+  return [{label,display:result.formatted,number:result.formatted.replace(/[ ().\-]/g,'')}];
  });
 }
 function chooseContactPhone(id){
@@ -378,6 +389,69 @@ const bindBeforePhoneChoice=bind;
 bind=function(){bindBeforePhoneChoice();document.querySelectorAll('[data-call-person]').forEach(button=>button.onclick=()=>chooseContactPhone(Number(button.dataset.callPerson)));};
 
 render();
+</script>
+<script>
+/* Validation locale : aucun numéro ou courriel transmis à un service de vérification. */
+function validateContactPhone(value,country='FR',mobile=false){
+ const raw=String(value||'').trim();if(!raw)return {valid:true,formatted:'',warning:''};
+ if(typeof libphonenumber==='undefined')return {valid:false,error:'La bibliothèque de validation des téléphones n’est pas chargée. Rechargez le widget.'};
+ if(!/^[+\d\s().\-]+$/.test(raw))return {valid:false,error:'Saisissez un seul numéro, sans texte ni extension.'};
+ const international=raw.startsWith('+')||raw.startsWith('00'),input=raw.startsWith('00')?'+'+raw.slice(2):raw;
+ try{
+  const api=libphonenumber,util=api.PhoneNumberUtil.getInstance(),phone=util.parseAndKeepRawInput(input,country);
+  if(!util.isValidNumber(phone)||(!international&&!util.isValidNumberForRegion(phone,country)))return {valid:false,error:'Numéro invalide pour le pays sélectionné : vérifiez l’indicatif et les chiffres.'};
+  const type=util.getNumberType(phone),types=api.PhoneNumberType,isMobile=type===types.MOBILE||type===types.FIXED_LINE_OR_MOBILE;
+  if(mobile&&!isMobile)return {valid:false,error:'Ce numéro n’est pas identifié comme un portable. Utilisez le champ bureau ou vérifiez le numéro.'};
+  return {valid:true,formatted:util.format(phone,api.PhoneNumberFormat.INTERNATIONAL).replace(/-/g,' '),national:util.format(phone,api.PhoneNumberFormat.NATIONAL),country:util.getRegionCodeForNumber(phone),warning:!mobile&&type===types.MOBILE?'Ce numéro est identifié comme mobile : vérifiez s’il doit figurer dans le champ portable.':type===types.FIXED_LINE_OR_MOBILE?'Dans ce pays, le préfixe ne permet pas de distinguer bureau et portable.':''};
+ }catch(error){return {valid:false,error:'Numéro non reconnu : vérifiez le pays, l’indicatif et la longueur.'};}
+}
+function contactPhoneCountry(record){
+ const entity=record?.Entite?fullData.Entites.find(e=>e.id===record.Entite):record;
+ const territory=fullData.Territoires.find(t=>t.id===entity?.Territoire);
+ return ({'971':'GP','972':'MQ','973':'GF','974':'RE','975':'PM','976':'YT','977':'BL','978':'MF','986':'WF','987':'PF','988':'NC'})[territory?.Code]||'FR';
+}
+function contactDefaultCountry(){return contactPhoneCountry(formBefore);}
+function contactPhoneDisplay(value,record,mobile=false){
+ if(!String(value||'').trim())return 'Non renseigné';
+ const result=validateContactPhone(value,contactPhoneCountry(record),mobile);
+ return result.valid?result.formatted:String(value)+' — à vérifier';
+}
+const dialogBeforeContactValidation=openDialog;
+openDialog=function(title,html){
+ dialogBeforeContactValidation(title,html);
+ const form=$('#editform');if(!form||typeof form.querySelectorAll!=='function')return;
+ const controls=[],fallbackCountry=contactDefaultCountry();
+ let countries=['FR'],displayNames;
+ if(typeof libphonenumber!=='undefined')countries=libphonenumber.PhoneNumberUtil.getInstance().getSupportedRegions();
+ try{displayNames=new Intl.DisplayNames(['fr'],{type:'region'});}catch(error){}
+ const name=code=>{try{return displayNames?.of(code)||code;}catch(error){return code;}};
+ countries=countries.slice().sort((a,b)=>name(a).localeCompare(name(b),'fr'));
+ for(const field of ['Telephone','TelephonePortable','Telephone2']){
+  const input=form.querySelector('[name="'+field+'"]');if(!input)continue;
+  input.type='tel';input.autocomplete='tel';input.inputMode='tel';
+  const select=document.createElement('select');select.name=field+'Pays';select.setAttribute('aria-label','Pays et indicatif — '+(field==='TelephonePortable'?'portable':'bureau'));
+  select.innerHTML=countries.map(code=>{const prefix=typeof libphonenumber!=='undefined'?libphonenumber.PhoneNumberUtil.getInstance().getCountryCodeForRegion(code):33;return '<option value="'+esc(code)+'">'+esc(name(code)+' (+'+prefix+')')+'</option>';}).join('');
+  select.value=fallbackCountry;
+  const initial=validateContactPhone(input.value,fallbackCountry);
+  if(initial.valid&&initial.formatted){if(countries.includes(initial.country))select.value=initial.country;input.value=initial.national;}
+  input.insertAdjacentElement('beforebegin',select);
+  const help=document.createElement('small');help.setAttribute('aria-live','polite');help.style.display='block';input.insertAdjacentElement('afterend',help);
+  const check=()=>{const result=validateContactPhone(input.value,select.value,field==='TelephonePortable');input.setCustomValidity(result.valid?'':result.error);help.textContent=result.valid?(result.formatted?'Format enregistré : '+result.formatted+(result.warning?' — '+result.warning:''):'Champ facultatif.'):result.error;help.className=result.valid?'muted':'error';return result;};
+  input.addEventListener('input',check);select.addEventListener('change',check);
+  input.addEventListener('blur',()=>{const result=check();if(result.valid&&result.formatted&&countries.includes(result.country)){select.value=result.country;input.value=result.national;check();}});
+  controls.push({input,check});check();
+ }
+ const email=form.querySelector('[name="Courriel"]');
+ const checkEmail=()=>{if(!email)return true;const invalid=C.emails(email.value).filter(v=>!C.valid(v));email.setCustomValidity(invalid.length?'Adresse mail invalide : '+invalid.join(', ')+'. Exemple : prenom.nom@interieur.gouv.fr. Séparez les adresses par des points-virgules.':'');return !invalid.length;};
+ if(email){email.autocomplete='email';email.inputMode='email';email.addEventListener('input',checkEmail);checkEmail();}
+ form.addEventListener('submit',event=>{
+  const results=controls.map(c=>({...c,result:c.check()})),invalid=results.find(c=>!c.result.valid),emailValid=checkEmail();
+  if(invalid||!emailValid){event.preventDefault();event.stopImmediatePropagation();(invalid?.input||email).reportValidity();return;}
+  results.forEach(c=>c.input.value=c.result.formatted);
+  if(email)email.value=C.emails(email.value).map(value=>{const at=value.lastIndexOf('@');return value.slice(0,at)+'@'+value.slice(at+1).toLowerCase();}).join('; ');
+ },true);
+};
+
 </script>
 <script>
 
