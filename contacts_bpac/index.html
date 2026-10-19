@@ -527,7 +527,7 @@ if(window.parent!==window){
   const items=[
    ...data.Entites.filter(C.active).map(e=>({key:'e'+e.id,label:e.Libelle||'Service',detail:[data.Territoires.find(t=>t.id===e.Territoire)?.Nom,data.Zones.find(z=>z.id===e.Zone)?.Nom].filter(Boolean).join(' · '),email:e.Courriel})),
    ...data.Personnes.filter(C.active).map(p=>{const e=data.Entites.find(e=>e.id===p.Entite);return {key:'p'+p.id,label:[p.Prenom,p.Nom].filter(Boolean).join(' '),detail:[p.Fonction,e?.Libelle,data.Territoires.find(t=>t.id===e?.Territoire)?.Nom,data.Zones.find(z=>z.id===e?.Zone)?.Nom].filter(Boolean).join(' · '),email:p.Courriel};})
-  ].map(x=>({...x,addresses:C.addresses(x.email).filter(a=>/^[^\\s@,;]+@[^\\s@,;]+\\.[^\\s@,;]+$/.test(a))})).filter(x=>x.addresses.length);
+  ].map(x=>({...x,addresses:C.addresses(x.email).filter(a=>/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(a))})).filter(x=>x.addresses.length);
   document.querySelector('#subject').closest('label').insertAdjacentHTML('beforebegin',`
    <section class="panel"><h3>Ajouter un destinataire — autre territoire ou service</h3>
     <label>Rechercher par nom, fonction, territoire ou service<input id="cross-search" type="search"></label>
