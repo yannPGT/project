@@ -514,4 +514,76 @@ if(window.parent!==window){
  loadGristApi();
 }
 
+</script>
+<script>
+/* Extension messagerie BPAC : sélection transversale et champs Pour / CC. */
+(function(){
+ const previous=compose;
+ compose=function(key,verification=null){
+  previous(key,verification);
+  if(verification)return;
+  const form=document.querySelector('#mailform');if(!form)return;
+  const selected=new Map(),safe=x=>esc(String(x||'')),normal=x=>String(x||'').trim().toLowerCase();
+  const items=[
+   ...data.Entites.filter(C.active).map(e=>({key:'e'+e.id,label:e.Libelle||'Service',detail:[data.Territoires.find(t=>t.id===e.Territoire)?.Nom,data.Zones.find(z=>z.id===e.Zone)?.Nom].filter(Boolean).join(' · '),email:e.Courriel})),
+   ...data.Personnes.filter(C.active).map(p=>{const e=data.Entites.find(e=>e.id===p.Entite);return {key:'p'+p.id,label:[p.Prenom,p.Nom].filter(Boolean).join(' '),detail:[p.Fonction,e?.Libelle,data.Territoires.find(t=>t.id===e?.Territoire)?.Nom,data.Zones.find(z=>z.id===e?.Zone)?.Nom].filter(Boolean).join(' · '),email:p.Courriel};})
+  ].map(x=>({...x,addresses:C.addresses(x.email).filter(a=>/^[^\\s@,;]+@[^\\s@,;]+\\.[^\\s@,;]+$/.test(a))})).filter(x=>x.addresses.length);
+  document.querySelector('#subject').closest('label').insertAdjacentHTML('beforebegin',`
+   <section class="panel"><h3>Ajouter un destinataire — autre territoire ou service</h3>
+    <label>Rechercher par nom, fonction, territoire ou service<input id="cross-search" type="search"></label>
+    <label>Correspondant<select id="cross-choice"><option value="">Rechercher d’abord</option></select></label>
+    <label>Champ<select id="cross-role"><option value="to">Pour</option><option value="cc">Copie (CC)</option></select></label>
+    <button type="button" class="secondary" id="cross-add">Ajouter le destinataire</button><div id="cross-added"></div>
+   </section>
+   <section><h3>Récapitulatif</h3><p id="cross-summary"></p>
+    <label>Pour<textarea readonly rows="3" id="cross-to"></textarea></label>
+    <label>Copie (CC)<textarea readonly rows="3" id="cross-cc"></textarea></label>
+    <div class="actions"><button type="button" class="secondary" id="cross-copy-to">Copier Pour</button>
+    <button type="button" class="secondary" id="cross-copy-cc">Copier CC</button></div>
+   </section>`);
+  const q=document.querySelector('#cross-search'),choice=document.querySelector('#cross-choice');
+  q.oninput=()=>{
+   const term=normal(q.value);
+   const matches=term?items.filter(x=>normal(x.label+' '+x.detail+' '+x.addresses.join(' ')).includes(term)).slice(0,100):[];
+   choice.innerHTML='<option value="">Choisir un correspondant</option>'+matches.map(x=>`<option value="${safe(x.key)}">${safe(x.label+' — '+x.detail)}</option>`).join('');
+  };
+  const compute=()=>{
+   const checked=[...form.querySelectorAll('.dest:checked')];
+   const baseline=C.recipients(data,checked.filter(x=>x.dataset.entity).map(x=>Number(x.dataset.entity)),checked.filter(x=>x.dataset.person).map(x=>Number(x.dataset.person))).addresses;
+   const seen=new Set(),to=[],cc=[];
+   const add=(a,arr)=>{for(const v of a){const k=normal(v);if(k&&!seen.has(k)){seen.add(k);arr.push(v.trim());}}};
+   add(baseline,to);
+   for(const x of selected.values())add(x.item.addresses,x.role==='cc'?cc:to);
+   document.querySelector('#cross-to').value=to.join(', ');
+   document.querySelector('#cross-cc').value=cc.join(', ');
+   document.querySelector('#cross-summary').textContent=to.length+' Pour · '+cc.length+' Copie · '+(to.length+cc.length)+' distinct(s)';
+   document.querySelector('#cross-added').innerHTML=[...selected.values()].map(x=>`<p>${safe(x.item.label)} — ${x.role==='cc'?'Copie':'Pour'} <button type="button" class="secondary" data-cross-remove="${safe(x.item.key)}">Retirer</button></p>`).join('');
+   document.querySelectorAll('[data-cross-remove]').forEach(b=>b.onclick=()=>{selected.delete(b.dataset.crossRemove);compute();});
+   document.querySelector('#mailopen').disabled=!to.length&&!cc.length;
+   return {to,cc};
+  };
+  document.querySelector('#cross-add').onclick=()=>{
+   const item=items.find(x=>x.key===choice.value);
+   if(!item)return say('Sélectionnez un correspondant.');
+   selected.set(item.key,{item,role:document.querySelector('#cross-role').value});compute();
+  };
+  form.querySelectorAll('.dest').forEach(el=>el.addEventListener('change',compute));
+  for(const id of ['allpeople','alldeps'])document.querySelector('#'+id)?.addEventListener('click',()=>setTimeout(compute,0));
+  document.querySelector('#cross-copy-to').onclick=()=>copy(compute().to.join(', '));
+  document.querySelector('#cross-copy-cc').onclick=()=>copy(compute().cc.join(', '));
+  document.querySelector('#mailcopy').onclick=()=>copy(compute().to.join(', '));
+  form.onsubmit=ev=>{
+   ev.preventDefault();
+   const {to,cc}=compute();if(!to.length&&!cc.length)return say('Aucun destinataire.');
+   const params=new URLSearchParams();if(cc.length)params.set('cc',cc.join(','));
+   params.set('subject',document.querySelector('#subject').value);
+   params.set('body',document.querySelector('#body').value);
+   const url='mailto:'+to.map(encodeURIComponent).join(',')+'?'+params.toString();
+   if(url.length>1800)return say('Lien trop long : utilisez Copier Pour et Copier CC pour Thunderbird.');
+   const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+   say('Ouverture Thunderbird demandée. Aucun message déclaré envoyé.');
+  };
+  compute();
+ };
+})();
 </script></body></html>
