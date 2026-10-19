@@ -402,12 +402,12 @@ function validateContactPhone(value,country='FR',mobile=false){
   if(!util.isValidNumber(phone)||(!international&&!util.isValidNumberForRegion(phone,country)))return {valid:false,error:'Numéro invalide pour le pays sélectionné : vérifiez l’indicatif et les chiffres.'};
   const type=util.getNumberType(phone),types=api.PhoneNumberType,isMobile=type===types.MOBILE||type===types.FIXED_LINE_OR_MOBILE;
   if(mobile&&!isMobile)return {valid:false,error:'Ce numéro n’est pas identifié comme un portable. Utilisez le champ bureau ou vérifiez le numéro.'};
-  return {valid:true,formatted:util.format(phone,api.PhoneNumberFormat.INTERNATIONAL).replace(/-/g,' '),national:util.format(phone,api.PhoneNumberFormat.NATIONAL),country:util.getRegionCodeForNumber(phone),warning:!mobile&&type===types.MOBILE?'Ce numéro est identifié comme mobile : vérifiez s’il doit figurer dans le champ portable.':type===types.FIXED_LINE_OR_MOBILE?'Dans ce pays, le préfixe ne permet pas de distinguer bureau et portable.':''};
+  return {valid:true,type,formatted:util.format(phone,api.PhoneNumberFormat.INTERNATIONAL).replace(/-/g,' '),national:util.format(phone,api.PhoneNumberFormat.NATIONAL),country:util.getRegionCodeForNumber(phone),warning:!mobile&&type===types.MOBILE?'Ce numéro est identifié comme mobile : vérifiez s’il doit figurer dans le champ portable.':type===types.FIXED_LINE_OR_MOBILE?'Dans ce pays, le préfixe ne permet pas de distinguer bureau et portable.':''};
  }catch(error){return {valid:false,error:'Numéro non reconnu : vérifiez le pays, l’indicatif et la longueur.'};}
 }
-function contactPhoneCountry(record){
- const entity=record?.Entite?fullData.Entites.find(e=>e.id===record.Entite):record;
- const territory=fullData.Territoires.find(t=>t.id===entity?.Territoire);
+function contactPhoneCountry(record,full=fullData){
+ const entity=record?.Entite?full.Entites.find(e=>e.id===record.Entite):record;
+ const territory=full.Territoires.find(t=>t.id===entity?.Territoire);
  return ({'971':'GP','972':'MQ','973':'GF','974':'RE','975':'PM','976':'YT','977':'BL','978':'MF','986':'WF','987':'PF','988':'NC'})[territory?.Code]||'FR';
 }
 function contactDefaultCountry(){return contactPhoneCountry(formBefore);}
@@ -451,6 +451,53 @@ openDialog=function(title,html){
   if(email)email.value=C.emails(email.value).map(value=>{const at=value.lastIndexOf('@');return value.slice(0,at)+'@'+value.slice(at+1).toLowerCase();}).join('; ');
  },true);
 };
+
+</script>
+<script>
+
+function phoneCorrectionPlan(full){
+ const rows=[],warnings=[];
+ for(const p of full.Personnes.filter(p=>C.active(p)&&full.Entites.some(e=>e.id===p.Entite&&C.active(e)))){
+  const country=contactPhoneCountry(p,full),office=validateContactPhone(p.Telephone,country),mobile=validateContactPhone(p.TelephonePortable,country),fields={};
+  const label=[p.Prenom,p.Nom].filter(Boolean).join(' ')||'Contact #'+p.id;
+  if(p.TelephonePortable){const check=validateContactPhone(p.TelephonePortable,country,true);if(check.valid){if(check.formatted!==p.TelephonePortable)fields.TelephonePortable=check.formatted;}else warnings.push(label+' : portable à vérifier — '+check.error);}
+  if(p.Telephone){
+   if(!office.valid)warnings.push(label+' : bureau à vérifier — '+office.error);
+   else if(office.type===libphonenumber.PhoneNumberType.MOBILE){
+    if(!String(p.TelephonePortable||'').trim()||(mobile.valid&&mobile.formatted===office.formatted)){fields.Telephone='';fields.TelephonePortable=office.formatted;}
+    else{warnings.push(label+' : deux numéros différents ; le portable existant est conservé. Classement à vérifier.');if(office.formatted!==p.Telephone)fields.Telephone=office.formatted;}
+   }else if(office.formatted!==p.Telephone)fields.Telephone=office.formatted;
+  }
+  if(Object.keys(C.changes(p,fields)).length)rows.push({table:'Personnes',id:p.id,label,entity:p.Entite,fields,before:Object.fromEntries(Object.keys(fields).map(k=>[k,p[k]||''])),moved:fields.Telephone===''&&!!fields.TelephonePortable});
+ }
+ for(const e of full.Entites.filter(C.active)){
+  const fields={},country=contactPhoneCountry(e,full);
+  for(const key of ['Telephone','Telephone2'])if(e[key]){const r=validateContactPhone(e[key],country);if(r.valid){if(r.formatted!==e[key])fields[key]=r.formatted;}else warnings.push(e.Libelle+' : '+key+' à vérifier — '+r.error);}
+  if(Object.keys(fields).length)rows.push({table:'Entites',id:e.id,label:e.Libelle,entity:e.id,fields,before:Object.fromEntries(Object.keys(fields).map(k=>[k,e[k]||'']))});
+ }
+ return {rows,warnings,moved:rows.filter(r=>r.moved).length};
+}
+function phoneCorrectionSnapshot(full){return JSON.stringify({people:full.Personnes.map(p=>[p.id,p.Actif,p.Entite,p.Telephone,p.TelephonePortable]).sort((a,b)=>a[0]-b[0]),entities:full.Entites.map(e=>[e.id,e.Actif,e.Territoire,e.Telephone,e.Telephone2]).sort((a,b)=>a[0]-b[0]),territories:full.Territoires.map(t=>[t.id,t.Code]).sort((a,b)=>a[0]-b[0])});}
+async function reviewPhoneCorrections(){
+ if(!isNational())return say('Correction globale réservée au BPAC national.');
+ if(typeof libphonenumber==='undefined')return say('Référentiel indisponible : rechargez le widget.');
+ try{if(live)await load();}catch(error){return say('Lecture impossible : '+error.message);}
+ const plan=phoneCorrectionPlan(fullData),snapshot=phoneCorrectionSnapshot(fullData),labels={Telephone:'Bureau',TelephonePortable:'Portable',Telephone2:'Second téléphone'};
+ const lines=plan.rows.flatMap(r=>Object.entries(r.fields).map(([key,value])=>'<tr><td>'+esc(r.label)+'</td><td>'+esc(labels[key])+'</td><td>'+esc(r.before[key]||'—')+'</td><td>'+esc(value||'Vide — déplacé vers le portable')+'</td></tr>')).join('');
+ openDialog('Corriger les téléphones existants','<p><strong>'+plan.rows.length+' fiche(s) à corriger, dont '+plan.moved+' mobile(s) à déplacer vers le portable.</strong></p><p>Les personnes archivées et services inactifs sont exclus. Aucun portable différent déjà renseigné n’est écrasé.</p><div class="tablewrap" style="max-height:40vh;overflow:auto"><table><thead><tr><th>Fiche</th><th>Champ</th><th>Avant</th><th>Après</th></tr></thead><tbody>'+(lines||'<tr><td colspan="4">Aucune correction automatique nécessaire.</td></tr>')+'</tbody></table></div><details class="sub"><summary>'+plan.warnings.length+' point(s) à vérifier manuellement</summary><ul>'+plan.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul></details><div class="actions"><button id="apply-phone-corrections" '+(plan.rows.length?'':'disabled')+'>Appliquer les corrections'+(live?' dans GRIST':' en démonstration')+'</button></div><p class="muted">Les anciennes et nouvelles valeurs seront journalisées avec votre compte connecté. La confirmation des coordonnées sera à renouveler.</p>');
+ $('#apply-phone-corrections').onclick=async()=>{
+  const button=$('#apply-phone-corrections');button.disabled=true;
+  try{
+   if(live)await load();if(phoneCorrectionSnapshot(fullData)!==snapshot){say('Des fiches ont changé depuis l’aperçu. Relancez la vérification.');return;}
+   const actions=[],entityFields=new Map(),date=new Date().toISOString();
+   for(const r of plan.rows){const before=fullData[r.table].find(x=>x.id===r.id);if(r.table==='Personnes')actions.push(['UpdateRecord',r.table,r.id,r.fields],history(r.table,r.id,'Correction téléphone : classement et format',C.changes(before,r.fields),''));if(r.entity)entityFields.set(r.entity,{...(entityFields.get(r.entity)||{}),...(r.table==='Entites'?r.fields:{}),ModifieLe:date});}
+   for(const [id,fields] of entityFields){const before=fullData.Entites.find(e=>e.id===id);if(before)actions.push(['UpdateRecord','Entites',id,fields],history('Entites',id,'Correction des téléphones / actualisation du service',C.changes(before,fields),''));}
+   if(await write(actions,plan.rows.length+' fiche(s) corrigée(s), dont '+plan.moved+' mobile(s) reclassé(s).'))$('#modal').close();
+  }catch(error){say('Correction impossible : '+error.message);}finally{button.disabled=false;}
+ };
+}
+const directoryBeforePhoneCorrection=directory;
+directory=function(){directoryBeforePhoneCorrection();if(!isNational())return;const heading=$('#view h2');if(heading)heading.insertAdjacentHTML('afterend','<div class="actions" style="margin-bottom:16px"><button class="secondary" id="review-phone-corrections" type="button">Corriger les téléphones existants</button></div>');$('#review-phone-corrections').onclick=reviewPhoneCorrections;};
 
 </script>
 <script>
