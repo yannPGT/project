@@ -154,15 +154,27 @@ const MapUI=(function(){
  function projected(features,w,h,pad=12){const all=features.flatMap(f=>points(f.geometry).map(raw)),xs=all.map(p=>p[0]),ys=all.map(p=>p[1]);const minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys),scale=Math.min((w-2*pad)/(maxx-minx||1),(h-2*pad)/(maxy-miny||1));const dx=(w-(maxx-minx)*scale)/2,dy=(h-(maxy-miny)*scale)/2;const project=p=>{const [x,y]=raw(p);return [dx+(x-minx)*scale,dy+(y-miny)*scale];};return {project,scale};}
  function path(f,project){const polys=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;return polys.map(poly=>poly.map(ring=>ring.map((p,i)=>{const [x,y]=project(p);return (i?'L':'M')+x.toFixed(2)+','+y.toFixed(2);}).join('')+'Z').join('')).join('');}
  function centre(f,project){const ps=points(f.geometry).map(project);let x=0,y=0;ps.forEach(p=>{x+=p[0];y+=p[1];});return [x/ps.length,y/ps.length];}
+
+ function contactSummary(full,entities){
+  const es=entities.filter(C.active),ids=new Set(es.map(e=>e.id));
+  const people=full.Personnes.filter(p=>C.active(p)&&ids.has(p.Entite)).length;
+  const generic=C.unique(es.flatMap(e=>C.addresses(e.Courriel))).length;
+  return people+' personne(s) active(s) · '+generic+' adresse(s) générique(s)';
+ }
+ function territoryTooltip(full,t){return t.Code+' — '+t.Nom+'\n'+contactSummary(full,C.territoryEntities(full,t));}
+ function zoneTooltip(full,z){
+  const territories=new Set(full.Territoires.filter(t=>t.Zone===z.id&&t.Attendu&&t.Type!=='Particulier').map(t=>t.id));
+  return 'Zone '+z.Nom+'\nÉtat-major : '+contactSummary(full,full.Entites.filter(e=>e.Type==='Zonal'&&e.Zone===z.id))+'\nDépartements et collectivités rattachés : '+contactSummary(full,full.Entites.filter(e=>e.Type!=='Zonal'&&territories.has(e.Territoire)));
+ }
  function block(ts,full,mode,title,w=640,h=480){
   const features=GEOMETRIES.features.filter(f=>ts.some(t=>t.Code===f.properties.code));if(!features.length)return `<div class="empty">Contour non disponible pour ${esc(title)}. Utilisez la liste des territoires.</div>`;
   const pr=projected(features,w,h),status=C.metrics({ ...full,Territoires:ts },full).status,zids=[...new Set(ts.map(t=>t.Zone))].sort((a,b)=>a-b);
-  let boundaries=features.map(f=>{const t=ts.find(t=>t.Code===f.properties.code),st=status.find(s=>s.territory.id===t.id),singleton=t.Zone&&C.singleTerritory(full,t.Zone),z=full.Zones.find(z=>z.id===t.Zone),zs=z&&C.zoneStatus(full,z);let key=t.UID,color=st?.contact?'#18753c':'#fff',label=t.Code+' · '+t.Nom+' · '+(st?.contact?'avec contact':'sans contact');
-   if(mode==='zones'&&z&&!singleton){key='Z:'+z.id;color=zs.contact?'#18753c':'#fff';label='État-major · '+z.Nom+' · '+(zs.contact?'avec contact':'sans contact');}
+  let boundaries=features.map(f=>{const t=ts.find(t=>t.Code===f.properties.code),st=status.find(s=>s.territory.id===t.id),singleton=t.Zone&&C.singleTerritory(full,t.Zone),z=full.Zones.find(z=>z.id===t.Zone),zs=z&&C.zoneStatus(full,z);let key=t.UID,color=st?.contact?'#18753c':'#fff',label=territoryTooltip(full,t);
+   if(mode==='zones'&&z&&!singleton){key='Z:'+z.id;color=zs.contact?'#18753c':'#fff';label=zoneTooltip(full,z);}
    const d=path(f,pr.project);return `<path d="${d}" fill="${color}" class="geo-region ${mode==='zones'?'zone-shape':''}" fill-rule="evenodd" data-map-key="${esc(key)}" aria-hidden="true"><title>${esc(label)}</title></path>`;
   }).join('');
   if(mode==='zones'&&ts.every(t=>t.Code.length===2)){
-   boundaries=ZONE_GEOMETRIES.features.filter(f=>f.properties.codes.some(code=>ts.some(t=>t.Code===code))).map(f=>{const z=full.Zones.find(z=>z.Code===f.properties.code);if(!z)return '';const zs=C.zoneStatus(full,z),color=zs.contact?'#18753c':'#fff';return `<path d="${path(f,pr.project)}" fill="${color}" class="geo-region" fill-rule="evenodd" data-map-key="Z:${z.id}" aria-hidden="true"><title>${esc(z.Nom+' · '+(zs.contact?'état-major avec contact':'état-major sans contact'))}</title></path>`;}).join('');
+   boundaries=ZONE_GEOMETRIES.features.filter(f=>f.properties.codes.some(code=>ts.some(t=>t.Code===code))).map(f=>{const z=full.Zones.find(z=>z.Code===f.properties.code);if(!z)return '';const zs=C.zoneStatus(full,z),color=zs.contact?'#18753c':'#fff';return `<path d="${path(f,pr.project)}" fill="${color}" class="geo-region" fill-rule="evenodd" data-map-key="Z:${z.id}" aria-hidden="true"><title>${esc(zoneTooltip(full,z))}</title></path>`;}).join('');
   }
   const labels=features.filter(f=>mode!=='zones'&&ts.length<35).map(f=>{const [x,y]=centre(f,pr.project),t=ts.find(t=>t.Code===f.properties.code);return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" class="map-code">${esc(t.Code)}</text>`;}).join('');
   let zonesLabels='';if(mode==='zones'){zonesLabels=zids.map(id=>{const z=full.Zones.find(z=>z.id===id),group=features.filter(f=>ts.find(t=>t.Code===f.properties.code)?.Zone===id);if(!z||!group.length)return '';const p=group.flatMap(f=>points(f.geometry).map(pr.project));const x=p.reduce((s,a)=>s+a[0],0)/p.length,y=p.reduce((s,a)=>s+a[1],0)/p.length;return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" class="map-zone-name">${esc(z.Nom)}</text>`;}).join('');}
@@ -170,12 +182,12 @@ const MapUI=(function(){
  }
  function maps(scoped,full,profile,mode){const ts=scoped.Territoires.filter(t=>t.Attendu&&t.Type!=='Particulier');const metro=ts.filter(t=>t.Code.length===2),overseas=ts.filter(t=>t.Code.length===3);let html='';
   if(metro.length)html+=`<div class="map-metropole">${block(metro,full,mode,'Métropole · '+(mode==='zones'?'zones de défense':'départements'),640,profile.level==='department'?280:480)}</div>`;
-  if(overseas.length)html+=`<div class="overseas"><h3>Outre-mer · DOM / COM et autres territoires</h3><p class="muted small">Encarts à échelles différentes. Les petits archipels restent accessibles par leurs boutons.</p><div class="overseas-grid">${overseas.map(t=>{const st=C.metrics({...full,Territoires:[t]},full).status[0],z=full.Zones.find(z=>z.id===t.Zone),singleton=z&&C.singleTerritory(full,z.id),zs=z&&C.zoneStatus(full,z);const key=mode==='zones'&&z&&!singleton?'Z:'+z.id:t.UID;return `<article class="map-inset"><button class="inset-name" data-map-key="${esc(key)}">${esc(t.Code+' · '+t.Nom)}</button>${block([t],full,mode,t.Nom,210,110)}<small>${esc(mode==='zones'&&z&&!singleton?'État-major · '+z.Nom:(t.Type==='Departement'?'DOM':'Collectivité / territoire'))} · ${(mode==='zones'&&z&&!singleton?zs:st).contact?'avec contact':'sans contact'}</small></article>`;}).join('')}</div></div>`;
+  if(overseas.length)html+=`<div class="overseas"><h3>Outre-mer · DOM / COM et autres territoires</h3><p class="muted small">Encarts à échelles différentes. Les petits archipels restent accessibles par leurs boutons.</p><div class="overseas-grid">${overseas.map(t=>{const st=C.metrics({...full,Territoires:[t]},full).status[0],z=full.Zones.find(z=>z.id===t.Zone),singleton=z&&C.singleTerritory(full,z.id),zs=z&&C.zoneStatus(full,z);const key=mode==='zones'&&z&&!singleton?'Z:'+z.id:t.UID;return `<article class="map-inset"><button class="inset-name" title="${esc(mode==='zones'&&z&&!singleton?zoneTooltip(full,z):territoryTooltip(full,t))}" data-map-key="${esc(key)}">${esc(t.Code+' · '+t.Nom)}</button>${block([t],full,mode,t.Nom,210,110)}<small>${esc(mode==='zones'&&z&&!singleton?'État-major · '+z.Nom:(t.Type==='Departement'?'DOM':'Collectivité / territoire'))} · ${(mode==='zones'&&z&&!singleton?zs:st).contact?'avec contact':'sans contact'}</small></article>`;}).join('')}</div></div>`;
   const singles=full.Zones.filter(z=>C.singleTerritory(full,z.id)&&ts.some(t=>t.Zone===z.id));
   if(mode==='zones'&&singles.length)html+=`<p class="muted">Présentés comme départements ou collectivités : ${singles.map(z=>esc(C.singleTerritory(full,z.id).Nom)).join(', ')}.</p>`;
   return html||'<p>Aucun territoire cartographiable dans ce périmètre.</p>';
  }
- return {maps,projected,path,points};
+ return {maps,projected,path,points,territoryTooltip,zoneTooltip};
 })();
 
 </script>
