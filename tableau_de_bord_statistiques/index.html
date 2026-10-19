@@ -172,6 +172,14 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
 .spm-signature{display:flex;align-items:center;gap:10px;flex-shrink:0;color:var(--muted);font-size:10px}
 .spm-signature img{display:block;width:156px;max-width:100%;height:auto}
 @media(max-width:600px){.footer{flex-direction:column;text-align:center}.spm-signature{justify-content:center}.spm-signature img{width:140px}}
+
+/* Fiche territoriale : aide à la rédaction contrôlée */
+.territorial-report-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.territorial-report-actions button{background:#000091;color:#fff;border:1px solid #000091;border-radius:4px;padding:8px 13px;cursor:pointer}
+.territorial-report-actions button.secondary{color:#000091;background:#fff}
+.territorial-report-editor{width:100%;min-height:360px;resize:vertical;line-height:1.6;font:14px/1.6 Arial,sans-serif;padding:14px;border:1px solid #b5b5b5;border-radius:5px;background:#fff;color:#161616}
+.territorial-report-note{font-size:12px;color:#555;margin-top:8px;white-space:normal}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 </head>
@@ -220,6 +228,14 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
   <div class="detail-panel"><h3>Risques et exercices</h3><div id="detailDeptRisks"></div></div>
   <div class="detail-panel"><h3>Alerte et participation</h3><div id="detailDeptAlerts"></div></div>
   <div class="detail-panel"><h3>Financement</h3><div id="detailDeptFinance"></div></div>
+ </div>
+
+ <div class="detail-panel" id="territorialReportPanel">
+  <h3>Fiche territoriale — proposition de rédaction</h3>
+  <p class="detail-note">Projet de paragraphe pour le déplacement du directeur général. Les chiffres proviennent des fiches d’exercices Grist du département sélectionné, pour l’année choisie et l’année précédente.</p>
+  <div class="territorial-report-actions"><button type="button" id="territorialReportGenerate">Actualiser la rédaction</button><button type="button" class="secondary" id="territorialReportCopy">Copier le texte</button></div>
+  <textarea id="territorialReportText" class="territorial-report-editor" aria-label="Projet de fiche territoriale" spellcheck="true" placeholder="Sélectionnez un département pour préparer la fiche."></textarea>
+  <p class="territorial-report-note" id="territorialReportValidation">Document de travail à valider : les données de SYNAPSE, les transmissions RETEX et les appréciations sur la circulaire nécessitent un contrôle spécifique.</p>
  </div>
 </section>
 <section class="view" id="viewZone" hidden>
@@ -1313,6 +1329,7 @@ function renderDepartmentDetail(){
  const r=departments().find(x=>territoryKey(x)===detailDepartmentKey);
  if(!r)return;
  const data=stat(r),ex=realizedExercises('dept').filter(x=>territoryKey(x)===detailDepartmentKey);
+ territorialReportRefresh();
  $('detailDeptMetrics').innerHTML=metric('Exercices réalisés',fmt(data.real))+metric('Programmés',fmt(data.planned))+metric('Annulés',fmt(data.cancel))+metric('En retard',fmt(data.late))+metric('Objectif annuel',fmt(data.goal))+metric('Atteinte',pct(data.real,data.goal)+' %');
  $('detailDeptMetrics').innerHTML+=metric('Alertes de la chaîne de commandement',fmt(commandAlertExercises('dept').filter(x=>territoryKey(x)===detailDepartmentKey).length),'Exercices réalisés, comptés séparément');
  const implemented=departmentalPlanCounts(S.year,detailDepartmentKey);$('detailDeptMetrics').innerHTML+=metric('Exercices avec PCS',fmt(implemented.pcs),'Organisateur ou joueur · réalisés')+metric('Exercices avec PICS',fmt(implemented.pics),'Organisateur ou joueur · réalisés');
@@ -1421,6 +1438,68 @@ $('aiRemove').addEventListener('click',removeAnnualAi);
 document.querySelectorAll('.stat-nav [data-view]').forEach(button=>button.addEventListener('click',()=>showUnifiedPage(button.dataset.view)));
 $('detailDepartment').addEventListener('change',()=>{detailDepartmentKey=$('detailDepartment').value;renderUnifiedDetails()});
 $('detailZone').addEventListener('change',()=>{detailZoneCode=$('detailZone').value;$('detailZoneFeedback').textContent='';renderUnifiedDetails()});
+
+/* Fiche territoriale : décomptes issus de la même source que la vue départementale. */
+function territorialReportRows(year,key){
+ return exerciseLedger(String(year)).regular.filter(r=>territoryClass(r)==='dept'&&territoryKey(r)===key);
+}
+function territorialReportGroups(list){
+ const counts=new Map();
+ list.forEach(r=>{const t=riskType(r);counts.set(t,(counts.get(t)||0)+1)});
+ return [...counts].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'fr'));
+}
+function territorialReportBullets(list){
+ const groups=territorialReportGroups(list);
+ return groups.length?groups.map(([label,n])=>'• '+n+' exercice'+(n>1?'s':'')+' portant sur '+label.toLocaleLowerCase('fr')+' ;').join('\n').replace(/ ;$/,'.'):'Aucune thématique à détailler.';
+}
+function territorialReportBuild(){
+ const key=detailDepartmentKey,chosen=$('detailDepartment')?.selectedOptions?.[0]?.textContent?.trim()||'Département';
+ const year=Number(S.year),prior=year-1;
+ if(!key||!Number.isInteger(year))return '';
+ const earlier=territorialReportRows(prior,key),current=territorialReportRows(year,key);
+ const classify=rows=>({
+  real:rows.filter(r=>exerciseStatus(r)==='realise'),
+  planned:rows.filter(r=>exerciseStatus(r)==='programme'),
+  cancel:rows.filter(r=>exerciseStatus(r)==='annule')
+ });
+ const a=classify(earlier),b=classify(current);
+ const fr=rows=>rows.filter(r=>yes(cell(r,['FR-Alert','Utilisation FR ALERT']))).length;
+ const p=(n,one,many)=>n+' '+(n===1?one:many);
+ const partial=year>=Number(parisToday().slice(0,4));
+ const lines=[
+  '3. Programmation et suivi des exercices — '+chosen,
+  '',
+  'En '+prior+', '+p(a.real.length,'exercice de gestion de crise a été réalisé','exercices de gestion de crise ont été réalisés')+'. '+(a.real.length?'Ils ont porté sur les thématiques suivantes :':''),
+  territorialReportBullets(a.real),
+  'L’utilisation de FR-Alert est renseignée pour '+p(fr(a.real),'exercice réalisé','exercices réalisés')+'.',
+  '',
+  'En '+year+', '+p(b.real.length+b.planned.length,'exercice est recensé','exercices sont recensés')+' comme réalisé ou programmé'+(b.real.length+b.planned.length>1?'s':'')+'. '+p(b.real.length,'exercice a été réalisé','exercices ont été réalisés')+(partial?' à la date de consultation':'')+'. '+(b.real.length?'Les thématiques abordées sont :':''),
+  territorialReportBullets(b.real),
+  '',
+  p(b.planned.length,'exercice demeure programmé','exercices demeurent programmés')+(partial?' pour la suite de l’année':'')+'.'+(b.planned.length?' Ils portent sur les thématiques suivantes :':''),
+  ...(b.planned.length?[territorialReportBullets(b.planned)]:[]),
+  '',
+  'Analyse :',
+  'La programmation et la réalisation des exercices doivent être appréciées au regard des objectifs de la circulaire applicable et de la nature des scénarios effectivement joués. L’éventuelle mise en œuvre du plan NOVI, le réalisme des exercices (terrain, cadres ou format combiné), le taux de transmission des RETEX et l’utilisation de SYNAPSE sont à confirmer à partir des données validées et des éléments qualitatifs recueillis auprès du territoire.',
+  '',
+  'Points de vérification avant diffusion : conformité aux orientations ministérielles ; exercices NOVI ; nombre d’exercices utilisant SYNAPSE ; taux de RETEX transmis (numérateur et dénominateur) ; éventuels changements de statut des exercices programmés.'
+ ];
+ if(a.cancel.length||b.cancel.length)lines.push('Nota : '+p(a.cancel.length,'exercice annulé','exercices annulés')+' en '+prior+' ; '+p(b.cancel.length,'exercice annulé','exercices annulés')+' en '+year+'.');
+ return lines.join('\n').replace(/\n{3,}/g,'\n\n');
+}
+function territorialReportRefresh(){
+ const area=$('territorialReportText');if(!area)return;
+ area.value=territorialReportBuild();
+ $('territorialReportValidation').textContent='Source : fiches d’exercices Grist (organisateur, hors alertes de chaîne de commandement). Années '+(Number(S.year)-1)+' et '+S.year+' · '+(detailDepartmentKey||'Aucun département')+'. Le texte est modifiable ; validation humaine obligatoire avant emploi institutionnel. Une absence de données ne prouve pas une absence d’exercice.';
+}
+async function territorialReportCopy(){
+ const area=$('territorialReportText');if(!area||!area.value)return;
+ try{await navigator.clipboard.writeText(area.value)}catch(_){area.focus();area.select();document.execCommand('copy')}
+ const b=$('territorialReportCopy');b.textContent='Texte copié';setTimeout(()=>{b.textContent='Copier le texte'},1800);
+}
+$('territorialReportGenerate').addEventListener('click',territorialReportRefresh);
+$('territorialReportCopy').addEventListener('click',territorialReportCopy);
+
 window.renderUnifiedDetails=renderUnifiedDetails;
 
 </script>
