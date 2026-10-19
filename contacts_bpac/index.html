@@ -672,4 +672,28 @@ if(window.parent!==window){
   compute();
  };
 })();
+</script>
+<script>
+/* Diagnostic annuaire : compteur explicite et remise à zéro des filtres. */
+const directoryBeforeDiagnostic=directory;
+directory=function(){
+ directoryBeforeDiagnostic();
+ const toolbar=document.querySelector('#view .toolbar');
+ if(!toolbar)return;
+ const shown=data.Territoires.filter(t=>(!zone||String(t.Zone)===zone)&&(!kind||t.Type===kind)&&matches(t)).length;
+ const total=data.Territoires.length;
+ const info=document.createElement('div');
+ info.className='actions';info.style.margin='8px 0';
+ const text=document.createElement('span');
+ text.className='muted';text.textContent='Territoires affichés : '+shown+' / '+total+' accessibles dans GRIST';
+ const reset=document.createElement('button');reset.type='button';reset.className='secondary';
+ reset.textContent='Afficher tous les territoires';
+ reset.onclick=()=>{search='';zone='';kind='';directory();bind();};
+ info.append(text,reset);toolbar.after(info);
+ if(live&&total<100){
+  const note=document.createElement('p');note.className='muted';
+  note.textContent='Si le total accessible est inférieur au référentiel attendu, vérifier les lignes de la table Territoires et les règles d’accès GRIST : réinitialiser les filtres ne peut pas rétablir des lignes absentes.';
+  info.after(note);
+ }
+};
 </script></body></html>
