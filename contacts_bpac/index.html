@@ -301,6 +301,33 @@ render();
 
 </script>
 <script>
+/* Sélection combinée de territoires et d’états-majors ; coordonnées génériques uniquement. */
+function bulkGenericRecipients(full,territoryIds,zoneIds){
+ const entities=new Map(),missingTargets=[];
+ const collect=(label,items)=>{const active=items.filter(C.active);active.forEach(e=>entities.set(e.id,e));if(!active.some(e=>C.addresses(e.Courriel).length))missingTargets.push(label);};
+ full.Territoires.filter(t=>territoryIds.includes(t.id)&&t.Attendu&&t.Type!=='Particulier').forEach(t=>collect(t.Code+' — '+t.Nom,C.territoryEntities(full,t)));
+ full.Zones.filter(z=>zoneIds.includes(z.id)).forEach(z=>collect('État-major — '+z.Nom,full.Entites.filter(e=>e.Type==='Zonal'&&e.Zone===z.id)));
+ return {...C.recipients(full,[...entities.keys()],[]),missingTargets,entityIds:[...entities.keys()]};
+}
+async function bulkGenericComposer(){
+ if(live){try{await load();}catch(error){return say('Lecture des contacts impossible : '+error.message);}}
+ const territories=fullData.Territoires.filter(t=>t.Attendu&&t.Type!=='Particulier').slice().sort((a,b)=>a.Code.localeCompare(b.Code,'fr',{numeric:true}));
+ const zones=fullData.Zones.slice().sort((a,b)=>a.Nom.localeCompare(b.Nom,'fr'));
+ openDialog('Courriel groupé — adresses génériques',`<form id="bulk-mailform"><p>Sélectionnez des départements / collectivités et/ou des états-majors de zone. Seules les adresses génériques des services actifs seront utilisées.</p><div class="twocol"><section><h3>Départements et collectivités</h3><div class="actions"><button type="button" class="secondary" data-bulk-all="territory">Tous les territoires</button><button type="button" class="secondary" data-bulk-none="territory">Aucun</button></div><div class="checks">${territories.map(t=>`<label><input type="checkbox" data-bulk-territory="${t.id}"> ${esc(t.Code+' — '+t.Nom)}</label>`).join('')}</div></section><section><h3>États-majors de zone</h3><div class="actions"><button type="button" class="secondary" data-bulk-all="zone">Toutes les zones</button><button type="button" class="secondary" data-bulk-none="zone">Aucune</button></div><div class="checks">${zones.map(z=>`<label><input type="checkbox" data-bulk-zone="${z.id}"> ${esc(z.Nom)}</label>`).join('')}</div></section></div><p class="muted">Cette sélection porte sur tout l’annuaire accessible, indépendamment des filtres de recherche. Les services nationaux et entités particulières sont exclus.</p><p id="bulk-info" role="status"></p><div id="bulk-recipients" class="recipients"></div><label>Objet<input id="bulk-subject" required></label><label>Message<textarea id="bulk-body" rows="6"></textarea></label><div class="actions"><button id="bulk-open" type="submit">Ouvrir Thunderbird / la messagerie</button><button id="bulk-copy" type="button" class="secondary">Copier les destinataires</button></div><p class="muted">Les doublons sont supprimés. L’ouverture de la messagerie ne constitue pas un envoi. Pour une sélection importante, copiez les destinataires dans Thunderbird.</p></form>`);
+ const ids=type=>[...document.querySelectorAll('[data-bulk-'+type+']:checked')].map(el=>Number(el.getAttribute('data-bulk-'+type)));
+ const resolve=()=>bulkGenericRecipients(fullData,ids('territory'),ids('zone'));
+ const refresh=()=>{const r=resolve();$('#bulk-recipients').textContent=r.addresses.join('; ')||'Aucune adresse utilisable sélectionnée';$('#bulk-info').textContent=ids('territory').length+' territoire(s), '+ids('zone').length+' zone(s) sélectionné(s) · '+r.addresses.length+' adresse(s) distincte(s).'+(r.missingTargets.length?' Sans adresse générique utilisable : '+r.missingTargets.join(', ')+'.':'')+(r.invalid.length?' Adresses invalides écartées : '+r.invalid.join(', ')+'.':'');$('#bulk-open').disabled=!r.addresses.length;$('#bulk-copy').disabled=!r.addresses.length;return r;};
+ document.querySelectorAll('[data-bulk-territory],[data-bulk-zone]').forEach(el=>el.onchange=refresh);
+ for(const action of ['all','none'])document.querySelectorAll('[data-bulk-'+action+']').forEach(button=>button.onclick=()=>{const type=button.getAttribute('data-bulk-'+action);document.querySelectorAll('[data-bulk-'+type+']').forEach(el=>el.checked=action==='all');refresh();});
+ $('#bulk-copy').onclick=()=>copy(resolve().addresses.join('; '));
+ $('#bulk-mailform').onsubmit=async event=>{event.preventDefault();const button=$('#bulk-open');button.disabled=true;try{if(live)await load();const r=refresh();if(!r.addresses.length)return say('Aucun destinataire utilisable.');openMail(r.addresses,$('#bulk-subject').value,$('#bulk-body').value);}catch(error){say('Relecture impossible : '+error.message+'. Aucun courriel ouvert.');}finally{refresh();}};
+ refresh();
+}
+const directoryBeforeBulk=directory;
+directory=function(){directoryBeforeBulk();const heading=$('#view h2');if(heading)heading.insertAdjacentHTML('afterend','<div class="actions" style="margin-bottom:20px"><button id="bulk-generic-mail" type="button">Courriel groupé à plusieurs territoires / zones</button></div>');$('#bulk-generic-mail').onclick=bulkGenericComposer;};
+
+</script>
+<script>
 
 if(window.parent!==window){
  const sources=['https://grist.numerique.gouv.fr/grist-plugin-api.js','https://docs.getgrist.com/grist-plugin-api.js'];
