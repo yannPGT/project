@@ -586,4 +586,90 @@ if(window.parent!==window){
   compute();
  };
 })();
+</script>
+<script>
+/* Sélecteur transversal V2 : déploiement à la demande et choix multiples. */
+(function(){
+ const former=compose;
+ compose=function(key,verification=null){
+  former(key,verification);if(verification)return;
+  const form=document.getElementById('mailform');if(!form)return;
+  const old=form.querySelector('#cross-add')?.closest('section.panel');if(old)old.remove();
+  const g=id=>document.getElementById(id),esc2=x=>esc(String(x??'')),norm=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const selected=new Map();
+  const entities=data.Entites.filter(C.active),persons=data.Personnes.filter(C.active);
+  const entries=[];
+  for(const e of entities){
+   const t=data.Territoires.find(t=>t.id===e.Territoire),z=data.Zones.find(z=>z.id===e.Zone);
+   entries.push({id:'e'+e.id,label:'Générique : '+e.Libelle,search:[e.Libelle,t?.Code,t?.Nom,z?.Nom].join(' '),territory:t?.id,zone:z?.id,kind:e.Type==='Zonal'?'zone':'department',emails:C.addresses(e.Courriel)});
+  }
+  for(const p of persons){
+   const e=entities.find(e=>e.id===p.Entite),t=data.Territoires.find(t=>t.id===e?.Territoire),z=data.Zones.find(z=>z.id===e?.Zone);
+   entries.push({id:'p'+p.id,label:[p.Prenom,p.Nom,'·',p.Fonction,'·',e?.Libelle].filter(Boolean).join(' '),search:[p.Prenom,p.Nom,p.Fonction,e?.Libelle,t?.Code,t?.Nom,z?.Nom].join(' '),territory:t?.id,zone:z?.id,kind:'person',emails:C.addresses(p.Courriel)});
+  }
+  const contacts=entries.map(e=>({...e,emails:e.emails.filter(a=>/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(a))})).filter(e=>e.emails.length);
+  const section=document.createElement('section');section.className='panel';section.style.margin='12px 0';section.style.padding='12px';
+  const toggle=document.createElement('button');toggle.type='button';toggle.className='secondary';toggle.textContent='Ajouter un destinataire';toggle.setAttribute('aria-expanded','false');
+  const pane=document.createElement('div');pane.hidden=true;
+  const search=document.createElement('input');search.type='search';search.placeholder='Nom, fonction, service, code département (ex. 77, 2A, 971)';search.setAttribute('aria-label','Rechercher des correspondants');
+  const result=document.createElement('div');result.className='checks';result.style.maxHeight='260px';result.style.overflow='auto';
+  const role=document.createElement('select');role.setAttribute('aria-label','Champ du message');
+  for(const [v,t] of [['to','Pour'],['cc','Copie (CC)']]){const option=document.createElement('option');option.value=v;option.textContent=t;role.append(option);}
+  const allDep=document.createElement('button'),allZones=document.createElement('button'),add=document.createElement('button');
+  for(const [b,t] of [[allDep,'Tous les génériques des départements'],[allZones,'Tous les génériques des zones'],[add,'Ajouter la sélection']]){b.type='button';b.className='secondary';b.textContent=t;}
+  const chosen=document.createElement('div'),hint=document.createElement('p');hint.className='muted';
+  pane.append(search,allDep,allZones,result,role,add);section.append(toggle,pane,chosen,hint);
+  form.querySelector('#subject').closest('label').before(section);
+  toggle.onclick=()=>{pane.hidden=!pane.hidden;toggle.setAttribute('aria-expanded',String(!pane.hidden));if(!pane.hidden)search.focus();};
+  const picked=new Set();
+  const render=()=>{
+   const q=norm(search.value);
+   const territoryIds=new Set(data.Territoires.filter(t=>q&&(norm(t.Code).startsWith(q)||norm(t.Nom).includes(q))).map(t=>t.id));
+   const matches=q?contacts.filter(c=>norm(c.search).includes(q)||territoryIds.has(c.territory)):[];
+   result.replaceChildren();
+   for(const c of matches.slice(0,250)){
+    const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.checked=picked.has(c.id);
+    input.onchange=()=>input.checked?picked.add(c.id):picked.delete(c.id);
+    label.append(input,document.createTextNode(' '+c.label));result.append(label);
+   }
+   hint.textContent=matches.length>250?'Résultats limités à 250 : précisez votre recherche.':matches.length+' correspondant(s) proposé(s).';
+  };
+  search.oninput=render;
+  const selectAll=kind=>{contacts.filter(c=>c.kind===kind).forEach(c=>picked.add(c.id));hint.textContent=picked.size+' élément(s) sélectionné(s), cliquez sur Ajouter la sélection.';render();};
+  allDep.onclick=()=>selectAll('department');allZones.onclick=()=>selectAll('zone');
+  const compute=()=>{
+   const checked=[...form.querySelectorAll('.dest:checked')];
+   const baseline=C.recipients(data,checked.filter(c=>c.dataset.entity).map(c=>Number(c.dataset.entity)),checked.filter(c=>c.dataset.person).map(c=>Number(c.dataset.person))).addresses;
+   const to=[],cc=[],seen=new Set();
+   const push=(list,dest)=>list.forEach(a=>{const k=norm(a);if(k&&!seen.has(k)){seen.add(k);dest.push(a.trim());}});
+   push(baseline,to);for(const o of selected.values())push(o.contact.emails,o.role==='cc'?cc:to);
+   g('cross-to').value=to.join(', ');g('cross-cc').value=cc.join(', ');
+   g('cross-summary').textContent=to.length+' Pour · '+cc.length+' CC · '+(to.length+cc.length)+' adresse(s) distincte(s)';
+   chosen.replaceChildren();
+   for(const o of selected.values()){
+    const p=document.createElement('p'),remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='Retirer';
+    remove.onclick=()=>{selected.delete(o.contact.id);compute();};
+    p.append(document.createTextNode(o.contact.label+' — '+(o.role==='cc'?'CC':'Pour')+' '),remove);chosen.append(p);
+   }
+   g('mailopen').disabled=!to.length&&!cc.length;
+   return {to,cc};
+  };
+  add.onclick=()=>{for(const c of contacts)if(picked.has(c.id))selected.set(c.id,{contact:c,role:role.value});picked.clear();render();compute();};
+  form.querySelectorAll('.dest').forEach(c=>c.addEventListener('change',compute));
+  ['allpeople','alldeps'].forEach(id=>g(id)?.addEventListener('click',()=>setTimeout(compute,0)));
+  g('cross-copy-to').onclick=()=>copy(compute().to.join(', '));
+  g('cross-copy-cc').onclick=()=>copy(compute().cc.join(', '));
+  g('mailcopy').onclick=()=>copy(compute().to.join(', '));
+  form.onsubmit=event=>{
+   event.preventDefault();const {to,cc}=compute();if(!to.length&&!cc.length)return say('Aucun destinataire.');
+   const params=new URLSearchParams();if(cc.length)params.set('cc',cc.join(','));
+   params.set('subject',g('subject').value);params.set('body',g('body').value);
+   const url='mailto:'+to.map(encodeURIComponent).join(',')+'?'+params.toString();
+   if(url.length>1800)return say('Lien trop long : copiez séparément Pour et CC pour Thunderbird.');
+   const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+   say('Ouverture Thunderbird demandée ; aucun envoi attesté.');
+  };
+  compute();
+ };
+})();
 </script></body></html>
