@@ -5,6 +5,8 @@ const nodes={};const el=id=>nodes[id]??(nodes[id]={innerHTML:'',textContent:'',v
 const ctx=vm.createContext({document:{getElementById:el,querySelectorAll:()=>[]},window:{},console,Intl,Date,Map,Set,WeakMap,JSON,setTimeout,clearTimeout,requestAnimationFrame(){}});
 vm.runInContext(scripts[0].slice(0,scripts[0].indexOf("$('year').addEventListener")),ctx);
 vm.runInContext(scripts[1].slice(0,scripts[1].indexOf("$('compareMode').addEventListener")),ctx);
+// La fiche territoriale est déclarée après les branchements des événements.
+vm.runInContext(scripts[1].slice(scripts[1].indexOf('/* Fiche territoriale'),scripts[1].indexOf("$('territorialReportGenerate').addEventListener")),ctx);
 const evaluate=code=>vm.runInContext(code,ctx);
 const native=code=>JSON.parse(JSON.stringify(evaluate(code)));
 const row=(id,year,posture,state,type,risk,territory='01 - Ain',extra={})=>({id,Annee:year,Posture:posture,État:state,"Type d'exercice":type,'Type de risque':risk,Risque:risk,'Niveau administratif':territory,Zone:territory.startsWith('ZD-')?territory:'ZD-EST',...extra});
@@ -51,6 +53,37 @@ assert(nodes.deptMetrics.innerHTML.includes('chaîne de commandement'));assert(n
 assert.equal(evaluate("annualAiPayload(annualReportData('2025')).departmentalImplementedPlans.pcsExercises"),3);
 assert(nodes.annualReportBody.innerHTML.includes('PCS et PICS mis en œuvre au niveau départemental'));
 assert(nodes.detailDeptMetrics.innerHTML.includes('Exercices avec PCS'));
+// Financements : mêmes calculs pour les vues et les exports, même avec agrégats périmés.
+ctx.financeFixture=[
+ row(301,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Financement_demande:'1 200,50 €',Financement_recu:null}),
+ row(302,2026,'Organisateur','Réalisé','Terrain','Risques naturels','01 - Ain',{Financement_demande:500,Financement_recu:'  '}),
+ row(303,2026,'Organisateur','Réalisé','Terrain','Risques naturels','01 - Ain',{Financement_demande:700,Financement_recu:0}),
+ row(304,2026,'Organisateur','Réalisé','Terrain','Risques naturels','01 - Ain',{Financement_demande:800,Financement_recu:600}),
+ row(305,2026,'Organisateur','Annulé','Terrain','Risques naturels','01 - Ain',{Financement_demande:9000,Financement_recu:900}),
+ row(306,2026,'Organisateur','Programmé','Cadres','Menaces','ZD-EST - EST',{Financement_demande:200,Financement_recu:0}),
+ row(307,2026,'Organisateur','Réalisé','Cadres','Menaces','ZD-EST - EST',{Financement_demande:300}),
+ row(308,2025,'Direction','Programmé','Terrain','Risques naturels','01 - Ain',{Financement_demande:9999}),
+ row(309,2026,'Organisateur','Programmé','Terrain','Risques naturels','02 - Aisne',{Zone:'ZD-NORD',Financement_demande:100}),
+];
+const savedBdd=evaluate('S.bdd'),savedInd=evaluate('S.ind'),savedFinance=evaluate('S.finance');
+evaluate("S.bdd=financeFixture;S.year='2026';S.finance=[{Annee:2026,Zone:'ZD-EST',Total_Demande:999999,Total_Recu:999999}];S.ind=[];comparisonYearCache.clear();reportDataCache.clear();exerciseLedgerCache.clear();");
+assert.deepEqual(native('financeSummary(financeSourceRows())'),{asked:3800.5,received:600,waiting:1500.5,overdue:800,remaining:2300.5,pending:2,amount:800});
+assert.equal(evaluate("financeSummary(financeSourceRows('2025')).remaining"),9999);
+assert.equal(evaluate('financeSummary([financeFixture[4]]).asked'),0);
+assert.equal(evaluate('financeSummary([financeFixture[2]]).overdue'),0);
+assert.equal(evaluate("comparisonYear('2026').money.asked"),3800.5);
+assert.equal(evaluate("annualReportData('2026').finance.remaining"),2300.5);
+evaluate("renderFinance();renderDepartmentDetail();renderZoneDetail();");
+assert(nodes.financeMetrics.innerHTML.includes('Restant à engager'));
+assert(nodes.detailDeptFinance.innerHTML.includes(evaluate('euro(3200.5)'))); // 3200.5 asked; 600 received; remaining 1700.5
+assert(nodes.detailDeptFinance.innerHTML.includes(evaluate('euro(1700.5)')));
+assert(nodes.detailZoneFinance.innerHTML.includes(evaluate('euro(2200.5)')));
+assert(!nodes.financeMetrics.innerHTML.includes('999'));
+assert(nodes.financeRows.innerHTML.includes(evaluate('euro(2200.5)')));
+assert.equal(evaluate('financeSummary([]).remaining'),0);
+ctx.savedBdd=savedBdd;ctx.savedInd=savedInd;ctx.savedFinance=savedFinance;
+evaluate("S.bdd=savedBdd;S.ind=savedInd;S.finance=savedFinance;S.year='2025';comparisonYearCache.clear();reportDataCache.clear();exerciseLedgerCache.clear();");
+console.log('Financements vérifiés : annulations exclues, programmés + réalisés sans reçu, zéro renseigné, périmètres et exports concordants.');
 const before=native("comparisonYear('2025')");const plan=native('buildPostureMigration(S.bdd)');
 assert.equal(plan.updates.find(x=>x.id===2).after,'Organisateur');assert.equal(plan.updates.find(x=>x.id===3).after,'Joueur');assert(plan.updates.find(x=>x.id===2).alert);
 assert(!plan.updates.some(x=>x.year>=2026));assert(plan.unresolved.some(x=>x.id===16));
