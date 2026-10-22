@@ -14,3 +14,11 @@
 - Établissement de la version actuellement présente dans le dépôt comme référence V2.0.
 - Ajout de « V2.0 » après la mention institutionnelle en pied de page.
 - Conservation de la signature SPM Développement.
+
+## Corrections du 22 octobre 2026 — version affichée V2.0 conservée
+
+- Calcul financier commun à partir des fiches SYNAPSE pour les vues générale, départementale et zonale, la comparaison et les exports annuels : les exercices annulés sont exclus.
+- Ajout du restant à engager et de ses deux composantes : montants demandés des exercices programmés ; montants demandés des exercices réalisés sans montant reçu renseigné.
+- Un reçu égal à zéro est considéré comme renseigné ; une valeur absente ou blanche ne l’est pas. Le retard financier correspond à une mise à jour attendue après réalisation, sans délai calendaire supplémentaire.
+- Ventilation zonale entre départements et activité propre EMIZ ; détail des composantes dans le tableau général.
+- Tests synthétiques des annulations, montants français, valeurs vides et nulles, zéro explicite, périmètres annuels et territoriaux, et indépendance vis-à-vis des anciens agrégats Grist. Pas de modification des formules ou données du classeur Grist.
