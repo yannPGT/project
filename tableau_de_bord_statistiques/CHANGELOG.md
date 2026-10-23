@@ -36,3 +36,9 @@
 - Attendre l’événement `onOptions` confirmant l’accès complet avant de demander la liste des tables. `ready()` annonce la disponibilité du widget sans confirmer l’autorisation.
 - Distinguer l’ouverture du widget seul, l’API absente, une absence de réponse et un accès insuffisant. Reprendre automatiquement le chargement après autorisation reçue.
 - Tests : `node tableau_de_bord_statistiques/tests/connection-startup.cjs` et audit statistique existant. Le message de délai dépassé observé ne permet pas de conclure à une corruption de la base ni de prouver la cause de la rupture de liaison.
+
+## 23 octobre 2026 — Compatibilité du niveau d’accès Grist (V2.0 conservée)
+
+- Corriger le champ de confirmation d’accès : l’API actuelle définit `InteractionOptions.accessLevel`. Le démarrage accepte également `access_level` pour compatibilité.
+- Les tests de connexion utilisent désormais le nom du champ défini dans l’interface officielle Grist ; un cas distinct vérifie l’ancien format.
+- Validation : tests de connexion et audit statistique réussis.
