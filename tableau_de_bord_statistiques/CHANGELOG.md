@@ -42,3 +42,10 @@
 - Corriger le champ de confirmation d’accès : l’API actuelle définit `InteractionOptions.accessLevel`. Le démarrage accepte également `access_level` pour compatibilité.
 - Les tests de connexion utilisent désormais le nom du champ défini dans l’interface officielle Grist ; un cas distinct vérifie l’ancien format.
 - Validation : tests de connexion et audit statistique réussis.
+
+## 23 octobre 2026 — Lecture indépendante des notifications de configuration (V2.0 conservée)
+
+- Ne plus attendre indéfiniment `onOptions` pour démarrer : lancer une lecture directe après `ready()`. Les refus explicites restent pris en compte et les contrôles de chaque requête restent assurés par Grist.
+- Supprimer la découverte préalable via `listTables()` : lecture des 12 identifiants connus, en commençant par `BDD_SYNAPSE_2026`. Une erreur de lecture identifie ainsi la table concernée.
+- Vérification supplémentaire avec le script officiel `https://docs.getgrist.com/grist-plugin-api.js`, téléchargé le 23 octobre 2026 : échanges RPC et chargement simulé des 12 tables avec et sans notification d’options. Test reproductible par `GRIST_PLUGIN_API_SOURCE=... node tests/connection-rpc.cjs`.
+- Audit statistique et tests de démarrage réussis. La validation dans le document utilisateur reste nécessaire : son contexte de navigateur n’est pas accessible à distance.

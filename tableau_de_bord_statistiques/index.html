@@ -794,10 +794,8 @@ function renderAll(){const ledger=exerciseLedger();$('statisticsScope').textCont
 function fillSelectors(){const ys=[...new Set([...S.ind,...S.emiz,...S.carteEmiz,...S.bdd,...S.objectives].map(yearOf).filter(y=>/^20\d{2}$/.test(y)))].sort((a,b)=>b-a);S.years=ys;const choiceYearId=refId(cell(S.choiceYear[0],['Annee','Année'])),choiceYear=S.yearMap.get(choiceYearId)||'';if(!ys.includes(S.year)){const currentYear=parisToday().slice(0,4);S.year=ys.includes(currentYear)?currentYear:(ys.includes(choiceYear)?choiceYear:ys[0]||'');}$('year').innerHTML=ys.map(y=>'<option value="'+esc(y)+'" '+(y===S.year?'selected':'')+'>'+esc(y)+'</option>').join('');for(const [id,kind,key]of [['deptTheme','dept','deptTheme'],['emizTheme','emiz','emizTheme']]){const items=themeItems(kind),current=S[key];$(id).innerHTML=mapSelectorOptions(kind,current);S[key]=items.some(x=>x.value===current)?current:(items[0]?.value||'OBJECTIF_QUANT');$(id).value=S[key]}S.planById=new Map(S.plansCatalog.map(r=>[r.id,text(cell(r,['Libelle','Libellé','Plan','Nom']))]).filter(([id,label])=>id!=null&&label));const plans=(S.plansCatalog.length?S.plansCatalog.map(r=>text(cell(r,['Libelle','Libellé','Plan','Nom']))).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr')):[...new Set(realizedExercises('dept').flatMap(exercisePlanLabels))].sort((a,b)=>a.localeCompare(b,'fr')));if(!plans.includes(S.plan))S.plan=plans[0]||'';$('planSelect').innerHTML=plans.map(p=>'<option value="'+esc(p)+'" '+(p===S.plan?'selected':'')+'>'+esc(p)+'</option>').join('')||'<option value="">Aucun plan renseigné</option>'}async function timed(p,label,ms=30000){let timer;try{return await Promise.race([p,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Délai dépassé pendant la lecture de '+label)),ms)})])}finally{clearTimeout(timer)}}
 async function fetchTables(){
  $('updated').textContent='Connexion au classeur Grist…';
- const available=await timed(grist.docApi.listTables(),'liste des tables',15000);
- const actual={};
- for(const [key,wanted] of Object.entries(TABLES)){const found=available.find(n=>String(n).toLowerCase()===wanted.toLowerCase());if(!found)throw new Error('Table absente du classeur : '+wanted);actual[key]=found}
- const data={},entries=Object.entries(actual);
+ // Les identifiants sont connus : ne pas bloquer la lecture sur listTables().
+ const data={},entries=Object.entries(TABLES).sort(([a],[b])=>(a==='bdd'?-1:b==='bdd'?1:0));
  for(let i=0;i<entries.length;i++){const [key,name]=entries[i];$('updated').textContent='Lecture Grist : '+name+' ('+(i+1)+'/'+entries.length+')';data[TABLES[key]]=rows(await timed(grist.docApi.fetchTable(name),'table '+name))}
  S.yearMap=new Map(data[TABLES.years].map(r=>[r.id,String(cell(r,['Annee','Année']))]));S.admins=data[TABLES.admins];S.adminById=new Map(S.admins.map(r=>[r.id,r]));S.ind=data[TABLES.ind];S.emiz=data[TABLES.emiz];S.carteEmiz=data[TABLES.carteEmiz];S.bdd=data[TABLES.bdd];S.finance=data[TABLES.finance];S.objectives=data[TABLES.objectives];S.deptThemes=data[TABLES.deptThemes];S.emizThemes=data[TABLES.emizThemes];S.plansCatalog=data[TABLES.plans];S.choiceYear=data[TABLES.choiceYear];S.planCountCache=null;S.exerciseCountCache=null;exerciseLedgerCache.clear();comparisonYearCache.clear();reportDataCache.clear();approvedAnnualTexts.clear();resetAnnualAiEditor();comparisonRendered=false;fillSelectors();renderAll();const summaryRow=emizSummary();const emizMap=emizRows();const mapZones=new Set(emizMap.map(zoneCode).filter(Boolean));$('updated').textContent='Grist · '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+' · EMIZ objectif '+(summaryRow?'ligne trouvée':'absent')+' · carte '+mapZones.size+' zone(s) / '+emizMap.length+' ligne(s)';$('updated').title='STATISTIQUES_GENERALE_EMIZ : '+S.emiz.length+' ligne(s), '+S.emiz.filter(isSelected).length+' sélectionnée(s). INDICATEURS_NIVEAUX_V2 EMIZ : '+emizRows().length+' ligne(s), '+new Set(emizRows().map(zoneCode).filter(Boolean)).size+' zone(s). CARTE_EMIZ : '+S.carteEmiz.length+' ligne(s) chargée(s) pour diagnostic.';$('updated').classList.remove('error');$('error').style.display='none'
 }
@@ -817,40 +815,40 @@ async function refresh(){try{await fetchTables()}catch(e){$('error').style.displ
 $('year').addEventListener('change',()=>{S.year=$('year').value;S.planCountCache=null;S.exerciseCountCache=null;fillSelectors();renderAll()});$('deptOutlyingPanel').addEventListener('toggle',e=>{if(e.currentTarget.open)requestAnimationFrame(()=>S.deptInsetMaps.forEach(m=>m.invalidateSize({pan:false})))});$('emizOutlyingPanel').addEventListener('toggle',e=>{if(e.currentTarget.open)requestAnimationFrame(()=>S.emizInsetMaps.forEach(m=>m.invalidateSize({pan:false})))});$('deptTheme').addEventListener('change',()=>{S.deptTheme=$('deptTheme').value;drawDeptMap()});$('emizTheme').addEventListener('change',()=>{S.emizTheme=$('emizTheme').value;drawEmizMap()});$('planSelect').addEventListener('change',()=>{S.plan=$('planSelect').value;drawDeptMap()});
 function startupFailure(e){const message=e?.message||String(e);$('error').style.display='block';$('error').textContent='Connexion Grist : '+message;$('updated').textContent='Connexion à vérifier';$('updated').classList.add('error')}
 function startGristConnection(){
- // ready() annonce le widget ; onOptions confirme la liaison et l’accès accordé.
- // Ne pas appeler docApi sur une page autonome ou avant cette confirmation.
  if(window.parent===window){
-  startupFailure(new Error('Cette page est le widget seul. Pour lire la base, ouvrez votre document Grist et sa page Statistiques. L’URL du widget doit être renseignée dans les options du widget personnalisé, avec « Accès complet au document ».'));
+  startupFailure(new Error('Cette page est le widget seul. Ouvrez le tableau de bord dans votre document Grist.'));
   return;
  }
- if(!window.grist||!grist.docApi||typeof grist.onOptions!=='function'){
+ if(!window.grist||!grist.docApi||typeof grist.docApi.fetchTable!=='function'){
   startupFailure(new Error('API Grist indisponible. Rechargez le document Grist.'));
   return;
  }
- $('updated').textContent='Attente de la connexion et de l’autorisation Grist…';
- let connected=false,access='',connectionTimer;
- const onOptions=(_options,interaction)=>{
-  const level=interaction?.accessLevel??interaction?.access_level;
-  if(!level)return;
-  connected=true;clearTimeout(connectionTimer);
-  const previous=access;access=level;
-  if(level!=='full'){
-   startupFailure(new Error('Accès au document non accordé. Dans Grist, ouvrez les options du widget personnalisé et autorisez « Accès complet au document ». Le chargement reprendra après autorisation.'));
-   return;
-  }
-  if(previous==='full')return;
+ let access='',requested=false;
+ const startReading=()=>{
+  if(requested||(access&&access!=='full'))return;
+  requested=true;
   $('error').style.display='none';$('updated').classList.remove('error');
-  // Différer d’un tour pour laisser les autres vues terminer leur initialisation.
-  setTimeout(refresh,0);
+  // Les contrôles d’accès effectifs restent assurés par Grist pour chaque requête.
+  Promise.resolve(refresh()).catch(startupFailure);
  };
  try{
-  grist.onOptions(onOptions);
-  connectionTimer=setTimeout(()=>{
-   if(!connected)startupFailure(new Error('Aucune réponse du document Grist. Ouvrez ce tableau de bord depuis Grist, vérifiez l’accès complet du widget, puis rechargez la page Grist.'));
-  },15000);
+  if(typeof grist.onOptions==='function')grist.onOptions((_options,interaction)=>{
+   const level=interaction?.accessLevel??interaction?.access_level;
+   if(!level)return;
+   const previous=access;access=level;
+   if(level!=='full'){
+    requested=false;
+    startupFailure(new Error('Grist indique un accès insuffisant. Vérifiez « Accès complet au document » dans les options du widget.'));
+   }else if(previous&&previous!=='full'){
+    setTimeout(startReading,0);
+   }
+  });
   grist.ready({requiredAccess:'full'});
+  // onOptions n’est pas un accusé de connexion garanti sur toutes les versions.
+  // Lancer la lecture même si cet événement n’est jamais émis.
+  setTimeout(startReading,300);
   Promise.all([loadGeo(GEO.dept,'dept'),loadGeo(GEO.emiz,'emiz')]);
- }catch(e){clearTimeout(connectionTimer);startupFailure(e)}
+ }catch(e){startupFailure(e)}
 }
 startGristConnection();
 </script>
