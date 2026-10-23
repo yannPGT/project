@@ -812,8 +812,44 @@ async function syncYearChoice(year){
 }
 async function refresh(){try{await fetchTables()}catch(e){$('error').style.display='block';$('error').textContent='Lecture Grist impossible : '+(e?.message||e);$('updated').textContent='Erreur de chargement';$('updated').classList.add('error')}}
 $('year').addEventListener('change',()=>{S.year=$('year').value;S.planCountCache=null;S.exerciseCountCache=null;fillSelectors();renderAll()});$('deptOutlyingPanel').addEventListener('toggle',e=>{if(e.currentTarget.open)requestAnimationFrame(()=>S.deptInsetMaps.forEach(m=>m.invalidateSize({pan:false})))});$('emizOutlyingPanel').addEventListener('toggle',e=>{if(e.currentTarget.open)requestAnimationFrame(()=>S.emizInsetMaps.forEach(m=>m.invalidateSize({pan:false})))});$('deptTheme').addEventListener('change',()=>{S.deptTheme=$('deptTheme').value;drawDeptMap()});$('emizTheme').addEventListener('change',()=>{S.emizTheme=$('emizTheme').value;drawEmizMap()});$('planSelect').addEventListener('change',()=>{S.plan=$('planSelect').value;drawDeptMap()});
-function startupFailure(e){const message=e?.message||String(e);$('error').style.display='block';$('error').textContent='Initialisation Grist impossible : '+message;$('updated').textContent='Erreur de connexion Grist';$('updated').classList.add('error')}
-try{if(!window.grist||!grist.docApi)throw new Error('API Grist absente. Ouvrez cette page dans un widget personnalisé intégré à un document Grist.');$('updated').textContent='Initialisation de la connexion Grist…';const ready=grist.ready({requiredAccess:'full'});Promise.all([loadGeo(GEO.dept,'dept'),loadGeo(GEO.emiz,'emiz')]);if(ready&&typeof ready.then==='function')ready.then(()=>setTimeout(refresh,300)).catch(startupFailure);else setTimeout(refresh,300);/* Rechargement périodique désactivé : une lecture par ouverture de vue. */}catch(e){startupFailure(e)}
+function startupFailure(e){const message=e?.message||String(e);$('error').style.display='block';$('error').textContent='Connexion Grist : '+message;$('updated').textContent='Connexion à vérifier';$('updated').classList.add('error')}
+function startGristConnection(){
+ // ready() annonce le widget ; onOptions confirme la liaison et l’accès accordé.
+ // Ne pas appeler docApi sur une page autonome ou avant cette confirmation.
+ if(window.parent===window){
+  startupFailure(new Error('Cette page est le widget seul. Pour lire la base, ouvrez votre document Grist et sa page Statistiques. L’URL du widget doit être renseignée dans les options du widget personnalisé, avec « Accès complet au document ».'));
+  return;
+ }
+ if(!window.grist||!grist.docApi||typeof grist.onOptions!=='function'){
+  startupFailure(new Error('API Grist indisponible. Rechargez le document Grist.'));
+  return;
+ }
+ $('updated').textContent='Attente de la connexion et de l’autorisation Grist…';
+ let connected=false,access='',connectionTimer;
+ const onOptions=(_options,interaction)=>{
+  const level=interaction?.access_level;
+  if(!level)return;
+  connected=true;clearTimeout(connectionTimer);
+  const previous=access;access=level;
+  if(level!=='full'){
+   startupFailure(new Error('Accès au document non accordé. Dans Grist, ouvrez les options du widget personnalisé et autorisez « Accès complet au document ». Le chargement reprendra après autorisation.'));
+   return;
+  }
+  if(previous==='full')return;
+  $('error').style.display='none';$('updated').classList.remove('error');
+  // Différer d’un tour pour laisser les autres vues terminer leur initialisation.
+  setTimeout(refresh,0);
+ };
+ try{
+  grist.onOptions(onOptions);
+  connectionTimer=setTimeout(()=>{
+   if(!connected)startupFailure(new Error('Aucune réponse du document Grist. Ouvrez ce tableau de bord depuis Grist, vérifiez l’accès complet du widget, puis rechargez la page Grist.'));
+  },15000);
+  grist.ready({requiredAccess:'full'});
+  Promise.all([loadGeo(GEO.dept,'dept'),loadGeo(GEO.emiz,'emiz')]);
+ }catch(e){clearTimeout(connectionTimer);startupFailure(e)}
+}
+startGristConnection();
 </script>
 <script>
 
