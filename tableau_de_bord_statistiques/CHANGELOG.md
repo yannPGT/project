@@ -30,3 +30,9 @@
 - Comparaison pluriannuelle limitée au département sélectionné : activité, objectifs, DO, risques, types, population, plans et financements. Années issues des données, avec les années de référence de la comparaison générale.
 - Alertes de commandement séparées ; PCS/PICS réalisés incluant les joueurs ; absence de données signalée par un tiret et année en cours provisoire.
 - Vérification : audit statistique automatisé, isolation entre deux départements et concordance des rendus avec la synthèse.
+
+## 23 octobre 2026 — Initialisation de la connexion Grist (V2.0 conservée)
+
+- Attendre l’événement `onOptions` confirmant l’accès complet avant de demander la liste des tables. `ready()` annonce la disponibilité du widget sans confirmer l’autorisation.
+- Distinguer l’ouverture du widget seul, l’API absente, une absence de réponse et un accès insuffisant. Reprendre automatiquement le chargement après autorisation reçue.
+- Tests : `node tableau_de_bord_statistiques/tests/connection-startup.cjs` et audit statistique existant. Le message de délai dépassé observé ne permet pas de conclure à une corruption de la base ni de prouver la cause de la rupture de liaison.
