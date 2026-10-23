@@ -22,3 +22,11 @@
 - Un reçu égal à zéro est considéré comme renseigné ; une valeur absente ou blanche ne l’est pas. Le retard financier correspond à une mise à jour attendue après réalisation, sans délai calendaire supplémentaire.
 - Ventilation zonale entre départements et activité propre EMIZ ; détail des composantes dans le tableau général.
 - Tests synthétiques des annulations, montants français, valeurs vides et nulles, zéro explicite, périmètres annuels et territoriaux, et indépendance vis-à-vis des anciens agrégats Grist. Pas de modification des formules ou données du classeur Grist.
+
+
+## 23 octobre 2026 — Vue départementale (V2.0 conservée)
+
+- Même rendu statistique que la synthèse départementale : types, risques, DO joué et personne, alerte, participation, scolaires, CIP, canaux et plans.
+- Comparaison pluriannuelle limitée au département sélectionné : activité, objectifs, DO, risques, types, population, plans et financements. Années issues des données, avec les années de référence de la comparaison générale.
+- Alertes de commandement séparées ; PCS/PICS réalisés incluant les joueurs ; absence de données signalée par un tiret et année en cours provisoire.
+- Vérification : audit statistique automatisé, isolation entre deux départements et concordance des rendus avec la synthèse.

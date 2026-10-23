@@ -225,11 +225,15 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
  <div class="detail-panel"><h3>Activité et objectif annuel</h3><div class="metrics" id="detailDeptMetrics"></div><div id="detailDeptForecast" class="detail-note"></div></div>
  <div class="detail-grid">
   <div class="detail-panel"><h3>Objectifs thématiques</h3><div id="detailDeptThemes"></div></div>
-  <div class="detail-panel"><h3>Risques et exercices</h3><div id="detailDeptRisks"></div></div>
-  <div class="detail-panel"><h3>Alerte et participation</h3><div id="detailDeptAlerts"></div></div>
+  <div class="detail-panel"><h3>Types d’exercices réalisés</h3><div id="detailDeptTypes"></div></div>
+  <div class="detail-panel"><h3>Risques recensés</h3><div id="detailDeptRisks"></div></div>
+  <div class="detail-panel"><h3>DO joué — nombre d’exercices et répartition</h3><div id="detailDeptActors"></div></div>
+  <div class="detail-panel"><h3>Plans activés à titre dominant</h3><div id="detailDeptPlans"></div></div>
+  <div class="detail-panel"><h3>Alerte et participation de la population</h3><div id="detailDeptPublic"></div></div>
   <div class="detail-panel"><h3>Financement</h3><div id="detailDeptFinance"></div></div>
  </div>
 
+ <div id="detailDeptComparison" aria-live="polite"></div>
  <div class="detail-panel" id="territorialReportPanel">
   <h3>Fiche territoriale — proposition de rédaction</h3>
   <p class="detail-note">Projet de paragraphe pour le déplacement du directeur général. Les chiffres proviennent des fiches d’exercices Grist du département sélectionné, pour l’année choisie et l’année précédente.</p>
@@ -723,7 +727,9 @@ function deptValueLabel(v){if(!v)return'—';if(v.kind==='status')return fmt(v.n
   const excluded=new Set(['ZD-GUYANE','ZD-CALEDONIE','ZD-POLYNESIE']);ZONE_OUTLYING.filter(([code])=>!mapZones.has(code)&&!excluded.has(code)).forEach(([code,name])=>{const r=zoneStatFor(code);if(!r)return;const v=categoryValue(r,S.emizTheme,'emiz'),el=document.createElement('span');el.className='external-card';el.textContent=name+' · '+(v.kind==='coverage'?text(v.value):v.kind==='status'?deptValueLabel(v):fmt(v.value));host.appendChild(el);attachCardTooltip(el,deptTooltip(r,name,'emiz'))});$('emizOutlyingCount').textContent='('+host.children.length+' zones)';
 }
 function renderGoals(){const ds=departments().map(r=>stat(r));const da=ds.filter(s=>s.real>=s.goal).length;const zones=emizRows().map(r=>stat(r,'emiz'));const achieved=zones.filter(s=>s.real>=s.goal).length;$('goals').innerHTML=ring('Départements et collectivités',da,ds.length)+ring('EMIZ — activité propre',achieved,zones.length);renderAnnualObjectives()}
-function renderDepartments(){const d=departments().map(r=>({r,s:stat(r)}));const sums=d.reduce((a,x)=>({real:a.real+x.s.real,planned:a.planned+x.s.planned,late:a.late+x.s.late,forecast:a.forecast+x.s.forecast}),{real:0,planned:0,late:0,forecast:0});const reached=d.filter(x=>x.s.real>=x.s.goal).length,expected=d.filter(x=>x.s.forecast>=x.s.goal).length;$('deptMetrics').innerHTML=metric('Exercices réalisés',fmt(sums.real))+metric('Exercices programmés',fmt(sums.planned))+metric('Exercices départementaux en retard',fmt(sums.late))+metric('Départements ayant atteint l’objectif',`${fmt(reached)} / ${fmt(d.length)} (${pct(reached,d.length)} %)`)+metric('Prévision d’atteinte',`${fmt(expected)} / ${fmt(d.length)} (${pct(expected,d.length)} %)`);const ex=realizedExercises('dept');$('deptTypes').innerHTML=barRows(grouped(ex,exerciseType));$('deptRisks').innerHTML=barRows(grouped(ex,riskType));const doPlayed=ex.filter(x=>{const v=cell(x,['DO joué','DO_joue','DO joue']);return yes(v)||['joue','dojoue'].includes(norm(text(v)))});$('deptActors').innerHTML=metric('Exercices avec DO joué',fmt(doPlayed.length),pct(doPlayed.length,ex.length)+' % des exercices départementaux')+'<div class="subheading">Personne ayant joué le DO</div>'+barRows(groupedFieldValuesByExercise(doPlayed,['qui DO','Qui_DO','Qui DO']));const alerts=ex.filter(x=>yes(cell(x,['Alerte_de_la_population','Alerte population','Alerte à la population']))).length;const involved=ex.filter(x=>yes(cell(x,['Population_impliquee','Population impliquée','Population impliquee']))).length;const schoolExercises=ex.filter(x=>yes(cell(x,['scolaires','scolaire']))).length;const cipExercises=ex.filter(x=>yes(cell(x,['CIP']))).length;$('deptPublic').innerHTML=`<div class="table-wrap"><table class="table"><thead><tr><th>Indicateur</th><th class="num">Nombre</th><th class="num">Part des exercices</th></tr></thead><tbody><tr><td>Exercices avec alerte à la population</td><td class="num">${fmt(alerts)}</td><td class="num">${pct(alerts,ex.length)} %</td></tr><tr><td>Exercices avec participation de la population</td><td class="num">${fmt(involved)}</td><td class="num">${pct(involved,ex.length)} %</td></tr><tr><td>Exercices impliquant des scolaires</td><td class="num">${fmt(schoolExercises)}</td><td class="num">${pct(schoolExercises,ex.length)} %</td></tr><tr><td>Exercices avec activation du CIP</td><td class="num">${fmt(cipExercises)}</td><td class="num">${pct(cipExercises,ex.length)} %</td></tr>${alertChannelRows(ex)}</tbody></table></div>`;const planCounts=departmentalPlanCounts(),pcsCount=planCounts.pcs,picsCount=planCounts.pics;$('deptPlans').innerHTML='<div class="subheading">PCS et PICS dans les exercices réalisés de l’année</div><div class="metrics">'+metric('Exercices avec PCS',fmt(pcsCount))+metric('Exercices avec PICS',fmt(picsCount))+'</div><p class="detail-note">Exercices départementaux réalisés, en posture organisateur ou joueur. Un exercice est compté une fois par plan, dans le plan dominant ou les plans concourants.</p><div class="subheading" style="margin-top:10px">Autres plans activés à titre dominant</div>'+limitedBarRows(grouped(ex,planName).filter(([n])=>n!=='Non renseigné'),10)}
+function renderDepartments(){const d=departments().map(r=>({r,s:stat(r)}));const sums=d.reduce((a,x)=>({real:a.real+x.s.real,planned:a.planned+x.s.planned,late:a.late+x.s.late,forecast:a.forecast+x.s.forecast}),{real:0,planned:0,late:0,forecast:0});const reached=d.filter(x=>x.s.real>=x.s.goal).length,expected=d.filter(x=>x.s.forecast>=x.s.goal).length;$('deptMetrics').innerHTML=metric('Exercices réalisés',fmt(sums.real))+metric('Exercices programmés',fmt(sums.planned))+metric('Exercices départementaux en retard',fmt(sums.late))+metric('Départements ayant atteint l’objectif',`${fmt(reached)} / ${fmt(d.length)} (${pct(reached,d.length)} %)`)+metric('Prévision d’atteinte',`${fmt(expected)} / ${fmt(d.length)} (${pct(expected,d.length)} %)`);renderDepartmentStatistics('dept',realizedExercises('dept'),departmentalPlanCounts())}
+function renderDepartmentStatistics(prefix,ex,plans){$(prefix+'Types').innerHTML=barRows(grouped(ex,exerciseType));$(prefix+'Risks').innerHTML=barRows(grouped(ex,riskType));const doPlayed=ex.filter(x=>{const v=cell(x,['DO joué','DO_joue','DO joue']);return yes(v)||['joue','dojoue'].includes(norm(text(v)))});$(prefix+'Actors').innerHTML=metric('Exercices avec DO joué',fmt(doPlayed.length),pct(doPlayed.length,ex.length)+' % des exercices départementaux')+'<div class="subheading">Personne ayant joué le DO</div>'+barRows(groupedFieldValuesByExercise(doPlayed,['qui DO','Qui_DO','Qui DO']));const alerts=ex.filter(x=>yes(cell(x,['Alerte_de_la_population','Alerte population','Alerte à la population']))).length;const involved=ex.filter(x=>yes(cell(x,['Population_impliquee','Population impliquée','Population impliquee']))).length;const schoolExercises=ex.filter(x=>yes(cell(x,['scolaires','scolaire']))).length;const cipExercises=ex.filter(x=>yes(cell(x,['CIP']))).length;$(prefix+'Public').innerHTML=`<div class="table-wrap"><table class="table"><thead><tr><th>Indicateur</th><th class="num">Nombre</th><th class="num">Part des exercices</th></tr></thead><tbody><tr><td>Exercices avec alerte à la population</td><td class="num">${fmt(alerts)}</td><td class="num">${pct(alerts,ex.length)} %</td></tr><tr><td>Exercices avec participation de la population</td><td class="num">${fmt(involved)}</td><td class="num">${pct(involved,ex.length)} %</td></tr><tr><td>Exercices impliquant des scolaires</td><td class="num">${fmt(schoolExercises)}</td><td class="num">${pct(schoolExercises,ex.length)} %</td></tr><tr><td>Exercices avec activation du CIP</td><td class="num">${fmt(cipExercises)}</td><td class="num">${pct(cipExercises,ex.length)} %</td></tr>${alertChannelRows(ex)}</tbody></table></div>`;const planCounts=plans,pcsCount=planCounts.pcs,picsCount=planCounts.pics;$(prefix+'Plans').innerHTML='<div class="subheading">PCS et PICS dans les exercices réalisés de l’année</div><div class="metrics">'+metric('Exercices avec PCS',fmt(pcsCount))+metric('Exercices avec PICS',fmt(picsCount))+'</div><p class="detail-note">Exercices départementaux réalisés, en posture organisateur ou joueur. Un exercice est compté une fois par plan, dans le plan dominant ou les plans concourants.</p><div class="subheading" style="margin-top:10px">Autres plans activés à titre dominant</div>'+limitedBarRows(grouped(ex,planName).filter(([n])=>n!=='Non renseigné'),10)}
+
 function emizGroups(){return{own:realizedExercises('emiz')}}
 function renderEmiz(){const es=emizRows().map(r=>({r,s:stat(r,'emiz')}));const derived=es.reduce((a,x)=>({real:a.real+x.s.real,planned:a.planned+x.s.planned,late:a.late+x.s.late}),{real:0,planned:0,late:0});const own=derived;const total=es.length;const achieved=es.filter(x=>x.s.real>=x.s.goal).length;const forecast=es.filter(x=>x.s.forecast>=x.s.goal).length;$('emizMetrics').innerHTML=metric('Exercices zonaux réalisés',fmt(own.real))+metric('Exercices zonaux programmés',fmt(own.planned))+metric('EMIZ ayant atteint l’objectif',`${achieved} / ${total} (${pct(achieved,total)} %)`)+metric('Prévision d’atteinte',`${forecast} / ${total} (${pct(forecast,total)} %)`)+metric('Exercices zonaux en retard',fmt(own.late));const g=emizGroups();$('emizTypes').innerHTML=barRows(grouped(g.own,exerciseType));$('emizRisks').innerHTML=barRows(grouped(g.own,riskType));$('emizPlans').innerHTML=barRows(grouped(g.own,planName).filter(([n])=>n!=='Non renseigné'));renderEmizByZone(es,g)}
 function renderEmizByZone(stats,groups){const zones=[...new Set([...stats.map(x=>zoneCode(x.r)),...groups.own.map(zoneOf)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));if(!zones.length){$('emizByZone').innerHTML='<div class="empty">Aucune donnée zonale pour cette année.</div>';return}const detail=(label,rows,field)=>`<div class="subheading">${label}</div>${barRows(grouped(rows,field))}`;$('emizByZone').innerHTML=zones.map(zone=>{const sr=stats.find(x=>norm(zoneCode(x.r))===norm(zone));const own=groups.own.filter(x=>norm(zoneOf(x))===norm(zone));const st=sr?.s||{real:0,planned:0,forecast:0,goal:0,late:0};return`<details><summary>${esc(zone)} — ${fmt(st.real)} exercice(s) réalisé(s) au niveau zonal</summary><div class="inside"><div class="metrics">${metric('Activité zonale',fmt(st.real)+' réalisé(s)',fmt(st.planned)+' programmé(s) · '+fmt(st.late)+' en retard')}${metric('Objectif EMIZ',fmt(st.goal)+' exercice(s)',`${st.real>=st.goal?'Atteint':st.forecast>=st.goal?'Prévu':'À atteindre'} · prévision ${fmt(st.forecast)}`)}</div>${detail('Types d’exercices',own,exerciseType)}${detail('Risques recensés',own,riskType)}${detail('Plans activés à titre dominant',own.filter(x=>planName(x)!=='Non renseigné'),planName)}</div></details>`}).join('')}
@@ -1351,6 +1357,45 @@ function renderUnifiedDetails(){
  if(unifiedPage==='department')renderDepartmentDetail();
  if(unifiedPage==='zone')renderZoneDetail();
 }
+// Même périmètre que la synthèse départementale, décliné par territoire et année.
+function departmentComparisonYear(year,key){
+ const ledger=exerciseLedger(year),source=ledger.all.filter(r=>territoryClass(r)==='dept'&&territoryKey(r)===key);
+ const indicator=territoryIndicators(year,'dept').find(r=>territoryKey(r)===key);
+ const activity=ledger.byTerritory.get(key)||{real:0,planned:0,cancel:0,late:0};
+ const ex=realizedExercises('dept',year).filter(r=>territoryKey(r)===key);
+ const count=fields=>ex.filter(r=>yes(cell(r,fields))).length;
+ const doPlayed=ex.filter(r=>{const v=cell(r,['DO joué','DO_joue','DO joue']);return yes(v)||['joue','dojoue'].includes(norm(text(v)))});
+ return {year,available:source.length>0||!!indicator,...activity,goal:indicator?number(cell(indicator,['Objectif','Objectif_annuel']))||4:null,
+  typeCounts:grouped(ex,exerciseType),riskCounts:grouped(ex,riskType),
+  actorCounts:groupedFieldValuesByExercise(doPlayed,['qui DO','Qui_DO','Qui DO']),
+  planCounts:grouped(ex.filter(r=>planName(r)!=='Non renseigné'),planName),
+  doPlayed:doPlayed.length,pop:count(['Alerte_de_la_population','Alerte population','Alerte à la population']),
+  participation:count(['Population_impliquee','Population impliquée','Population impliquee']),
+  fr:count(ALERT_CHANNELS[0].fields),saip:count(ALERT_CHANNELS[1].fields),radio:count(ALERT_CHANNELS[2].fields),
+  school:count(['scolaires','scolaire']),cip:count(['CIP']),...departmentalPlanCounts(year,key),
+  commandAlerts:commandAlertExercises('dept',year).filter(r=>territoryKey(r)===key).length,
+  money:financeSummary(financeSourceRows(year).filter(r=>territoryClass(r)==='dept'&&territoryKey(r)===key))};
+}
+function renderDepartmentComparison(key,label){
+ const years=[...new Set([...COMPARE_YEARS,String(S.year),...S.bdd.map(yearOf),...S.ind.map(yearOf)])].filter(y=>/^\d{4}$/.test(y)).sort();
+ const data=years.map(year=>departmentComparisonYear(year,key));
+ const table=(title,rows,note='')=>compareTable(title,rows,data,note,years);
+ const metricRows=items=>items.map(([label,field])=>({label,value:d=>fmt(d[field])}));
+ const ranking=field=>[...new Set(data.flatMap(d=>d[field].map(x=>x[0])))].sort((a,b)=>a.localeCompare(b,'fr')).map(label=>({label,value:d=>fmt(d[field].find(x=>x[0]===label)?.[1]||0)}));
+ $('detailDeptComparison').innerHTML='<div class="detail-heading"><h2>Comparaison pluriannuelle — '+esc(label)+'</h2><p>Même département pour toutes les années. Les tirets signalent une absence de données ; les évolutions de l’année en cours sont provisoires.</p></div>'+
+  table('Activité et objectif annuel',metricRows([['Exercices réalisés','real'],['Exercices programmés','planned'],['Exercices annulés','cancel'],['Exercices en retard','late']]).concat([
+   {label:'Objectif annuel',value:d=>d.goal===null?null:fmt(d.goal)},
+   {label:'Atteinte de l’objectif',value:d=>d.goal===null?null:pct(d.real,d.goal)+' %',trendUnit:'pts'},
+   {label:'Prévision d’atteinte',value:d=>d.goal===null?null:pct(d.real+d.planned,d.goal)+' %',trendUnit:'pts'},
+   {label:'Alertes de la chaîne de commandement',value:d=>fmt(d.commandAlerts)}]),'Alertes comptées séparément. Les retards correspondent à la situation actuelle des fiches de chaque année.')+
+  table('Types d’exercices réalisés',ranking('typeCounts'))+
+  table('Risques recensés',ranking('riskCounts'))+
+  table('DO joué',metricRows([['Exercices avec DO joué','doPlayed']]).concat(ranking('actorCounts')))+
+  table('Alerte et participation de la population',metricRows([['Alerte à la population','pop'],['Participation de la population','participation'],['FR-Alert','fr'],['Sirènes SAIP','saip'],['Alerte radio','radio'],['Scolaires impliqués','school'],['CIP activée','cip']]))+
+  table('Plans mis en œuvre',metricRows([['Exercices avec PCS','pcs'],['Exercices avec PICS','pics']]).concat(ranking('planCounts')),'PCS/PICS : réalisés comme organisateur ou joueur, comptés une fois par plan. Autres plans : plans dominants des exercices réalisés par un organisateur.')+
+  table('Financement',[['Financement demandé','asked'],['Financement reçu renseigné','received'],['Restant à engager','remaining'],['En attente de dépense · programmés','waiting'],['En retard · réalisés sans montant reçu','overdue']].map(([label,field])=>({label,value:d=>euro(d.money[field])})),FINANCE_METHOD);
+}
+
 function renderDepartmentDetail(){
  const choices=departments().map(r=>({key:territoryKey(r),label:territoryName(r)})).sort((a,b)=>a.label.localeCompare(b.label,'fr',{numeric:true}));
  detailDepartmentKey=detailSelect($('detailDepartment'),choices,detailDepartmentKey);
@@ -1365,19 +1410,8 @@ function renderDepartmentDetail(){
  const key=text(cell(r,['Cle_Annee_Niveau'])),objective=departmentExtras.find(x=>text(cell(x,['Cle_Annee_Niveau']))===key);
  const html=cell(objective,['HTML_Objectifs']);
  $('detailDeptThemes').innerHTML=objectiveCoverageRows(r,'dept');
- const states=['Réalisé'];
- const labels=[...new Set(ex.map(riskType))].sort((a,b)=>a.localeCompare(b,'fr'));
- $('detailDeptRisks').innerHTML=labels.length?labels.map(label=>{
-   const group=ex.filter(x=>riskType(x)===label);
-   return '<details><summary>'+esc(label)+' · '+fmt(group.length)+' exercice(s)</summary><div class="inside">'+
-    states.map(st=>'<div class="barline"><span>'+st+'</span><div class="bar"><i style="width:'+pct(group.filter(x=>norm(text(cell(x,['Etat','État'])))===norm(st)).length,group.length)+'%"></i></div><b>'+fmt(group.filter(x=>norm(text(cell(x,['Etat','État'])))===norm(st)).length)+'</b></div>').join('')+
-    totalBar('Risques',grouped(group,riskName))+'</div></details>';
- }).join(''):'<div class="empty">Aucun exercice organisé pour cette sélection.</div>';
- const count=names=>ex.filter(x=>yes(cell(x,names))).length;
- $('detailDeptAlerts').innerHTML='<div class="metrics">'+metric('Alerte à la population',fmt(count(['Alerte de la population','Alerte_de_la_population'])))+
- metric('FR-Alert',fmt(count(['FR-Alert','Utilisation FR ALERT'])))+metric('Sirènes SAIP',fmt(count(['sirenes SAIP','sirènes SAIP'])))+
- metric('Alerte radio',fmt(count(['radios conventionnées','Alerte radio'])))+metric('Scolaires',fmt(count(['scolaires','scolaire'])))+
- metric('CIP',fmt(count(['CIP'])))+'</div>';
+ renderDepartmentStatistics('detailDept',ex,implemented);
+ renderDepartmentComparison(detailDepartmentKey,territoryName(r));
  const moneyRows=financeSourceRows().filter(x=>territoryKey(x)===detailDepartmentKey);
  $('detailDeptFinance').innerHTML='<div class="metrics">'+financeMetrics(financeSummary(moneyRows))+'</div><div class="notice">'+esc(FINANCE_METHOD)+'</div>';
  const comments=[...new Set(moneyRows.map(x=>text(cell(x,['Commentaire_financement','Commentaire financement']))).filter(Boolean))];
@@ -1530,3 +1564,4 @@ window.renderUnifiedDetails=renderUnifiedDetails;
 </script>
 </body>
 </html>
+
