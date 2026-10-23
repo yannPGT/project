@@ -49,3 +49,10 @@
 - Supprimer la découverte préalable via `listTables()` : lecture des 12 identifiants connus, en commençant par `BDD_SYNAPSE_2026`. Une erreur de lecture identifie ainsi la table concernée.
 - Vérification supplémentaire avec le script officiel `https://docs.getgrist.com/grist-plugin-api.js`, téléchargé le 23 octobre 2026 : échanges RPC et chargement simulé des 12 tables avec et sans notification d’options. Test reproductible par `GRIST_PLUGIN_API_SOURCE=... node tests/connection-rpc.cjs`.
 - Audit statistique et tests de démarrage réussis. La validation dans le document utilisateur reste nécessaire : son contexte de navigateur n’est pas accessible à distance.
+
+## 23 octobre 2026 — Infobulles des statistiques départementales (V2.0 conservée)
+
+- Survol des types, risques, DO joué et fonctions, plans dominants, alerte et participation : noms et dates des exercices composant chaque indicateur, triés par date.
+- Financement départemental : noms, dates et montants des demandes et des reçus renseignés ; les reçus de 0 € sont conservés et les valeurs absentes exclues de cette liste.
+- Infobulles natives sur les lignes, barres et cartes ; noms échappés, dates absentes signalées, filtres territoriaux et annuels conservés. Comparaison dépliable inchangée.
+- Validation : audit statistique, tests des infobulles, tests de démarrage et échanges RPC avec le script API officiel réussis. Contrôle dans le document utilisateur à confirmer après rechargement.
