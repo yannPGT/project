@@ -233,7 +233,10 @@ html,body{font:14px/1.55 Marianne,Arial,sans-serif;background:var(--bg)}
   <div class="detail-panel"><h3>Financement</h3><div id="detailDeptFinance"></div></div>
  </div>
 
- <div id="detailDeptComparison" aria-live="polite"></div>
+ <details id="detailDeptComparisonPanel">
+  <summary>Comparer les années — département sélectionné</summary>
+  <div class="inside" id="detailDeptComparison" aria-live="polite"></div>
+ </details>
  <div class="detail-panel" id="territorialReportPanel">
   <h3>Fiche territoriale — proposition de rédaction</h3>
   <p class="detail-note">Projet de paragraphe pour le déplacement du directeur général. Les chiffres proviennent des fiches d’exercices Grist du département sélectionné, pour l’année choisie et l’année précédente.</p>
