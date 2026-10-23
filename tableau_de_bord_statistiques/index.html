@@ -830,7 +830,7 @@ function startGristConnection(){
  $('updated').textContent='Attente de la connexion et de l’autorisation Grist…';
  let connected=false,access='',connectionTimer;
  const onOptions=(_options,interaction)=>{
-  const level=interaction?.access_level;
+  const level=interaction?.accessLevel??interaction?.access_level;
   if(!level)return;
   connected=true;clearTimeout(connectionTimer);
   const previous=access;access=level;
