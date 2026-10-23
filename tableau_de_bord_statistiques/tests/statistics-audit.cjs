@@ -53,6 +53,30 @@ assert(nodes.deptMetrics.innerHTML.includes('chaîne de commandement'));assert(n
 assert.equal(evaluate("annualAiPayload(annualReportData('2025')).departmentalImplementedPlans.pcsExercises"),3);
 assert(nodes.annualReportBody.innerHTML.includes('PCS et PICS mis en œuvre au niveau départemental'));
 assert(nodes.detailDeptMetrics.innerHTML.includes('Exercices avec PCS'));
+// Vue départementale : isolation territoriale et concordance avec la synthèse.
+const scoped=native("departmentComparisonYear('2025','code:01')");
+assert.equal(scoped.real,2);assert.equal(scoped.pcs,2);assert.equal(scoped.pics,1);
+assert.equal(scoped.commandAlerts,3);assert.equal(scoped.fr,1);
+assert.equal(native("departmentComparisonYear('2025','code:02')").pcs,1);
+assert.equal(native("departmentComparisonYear('2024','code:01')").available,false);
+assert.equal(native("departmentComparisonYear('2026','code:01')").real,1);
+assert.equal(scoped.typeCounts.reduce((n,x)=>n+x[1],0),scoped.real);
+assert(!JSON.stringify(scoped.riskCounts).includes('PLAYER_ONLY'));
+assert(!JSON.stringify(scoped.riskCounts).includes('FUTURE_ONLY'));
+evaluate("S.year='2025';detailDepartmentKey='code:01';renderDepartmentDetail();");
+assert(nodes.detailDeptPublic.innerHTML.includes('participation de la population'));
+assert(nodes.detailDeptActors.innerHTML.includes('Personne ayant joué le DO'));
+assert(nodes.detailDeptComparison.innerHTML.includes('Comparaison pluriannuelle — 01 - Ain'));
+assert(!nodes.detailDeptComparison.innerHTML.includes('Exercices zonaux'));
+for(const suffix of ['Types','Risks','Actors','Public','Plans']){
+ evaluate("renderDepartmentStatistics('expected',realizedExercises('dept').filter(r=>territoryKey(r)==='code:01'),departmentalPlanCounts('2025','code:01'))");
+ assert.equal(nodes['detailDept'+suffix].innerHTML,nodes['expected'+suffix].innerHTML);
+}
+evaluate("detailDepartmentKey='code:02';renderDepartmentDetail();");
+assert(nodes.detailDeptComparison.innerHTML.includes('Comparaison pluriannuelle — 02 - Aisne'));
+assert(!nodes.detailDeptComparison.innerHTML.includes('01 - Ain'));
+evaluate("detailDepartmentKey='code:01';renderDepartmentDetail();");
+console.log('Vue départementale vérifiée : mêmes indicateurs que la synthèse, filtre territorial, PCS/PICS joueurs, changement de département, années absentes.');
 // Financements : mêmes calculs pour les vues et les exports, même avec agrégats périmés.
 ctx.financeFixture=[
  row(301,2026,'Organisateur','Programmé','Terrain','Risques naturels','01 - Ain',{Financement_demande:'1 200,50 €',Financement_recu:null}),
@@ -227,3 +251,4 @@ evaluate("S.year='2025';S.plan='Plan communal de sauvegarde';S.deptTheme='REALIS
  console.log(JSON.stringify({results,elapsedMs:Date.now()-started},null,2));
 
 })().catch(e=>{console.error(e);process.exitCode=1});
+
