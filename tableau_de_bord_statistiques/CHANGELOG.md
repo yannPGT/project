@@ -56,3 +56,11 @@
 - Financement départemental : noms, dates et montants des demandes et des reçus renseignés ; les reçus de 0 € sont conservés et les valeurs absentes exclues de cette liste.
 - Infobulles natives sur les lignes, barres et cartes ; noms échappés, dates absentes signalées, filtres territoriaux et annuels conservés. Comparaison dépliable inchangée.
 - Validation : audit statistique, tests des infobulles, tests de démarrage et échanges RPC avec le script API officiel réussis. Contrôle dans le document utilisateur à confirmer après rechargement.
+
+## 25 octobre 2026 — Dashboard de comparaison départementale (V2.0 conservée)
+
+- Modification limitée à la comparaison pluriannuelle de la vue départementale : cartes de repères, graphiques annuels d’activité et de financement, comparaisons de deux années dans des volets thématiques.
+- Période par défaut limitée aux cinq dernières années disponibles jusqu’à l’année sélectionnée ; historique complet et inclusion des années futures sur demande. Absence de données distinguée d’un zéro ; repères d’objectif propres à chaque année ; années incomplètes signalées.
+- Tableaux existants conservés dans « Voir la comparaison chiffrée », replié par défaut. Infobulles avec exercices et dates ; détails financiers avec montants ; PCS/PICS conservant leur périmètre organisateur ou joueur.
+- Styles réservés à ce composant. Aucun changement des autres parties du widget, des formules de calcul ni du démarrage Grist.
+- Vérification : audit statistique, infobulles et connexion ; tests du dashboard, contrôle automatique de l’absence de changement extérieur ; essais Chromium des sélecteurs et volets, filtrage département/année et rendu bureau/mobile réussis sur données synthétiques.
