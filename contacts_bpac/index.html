@@ -358,19 +358,24 @@ openDialog=function(title,html){dialogBeforeIdentity(title,html);if(!live)return
 const writeBeforeIdentity=write;
 write=async function(actions,success){
  if(live&&actions.some(a=>a[0]==='AddRecord'&&a[1]==='Historique')){
+  // Ne jamais tenter de migrer le schéma au cours d'une sauvegarde de contact.
+  // Les actions métier + l'historique restent dans une seule transaction.
   try{
-   const table=await grist.docApi.fetchTable('Historique'),setup=[];
-   const specs=[['AuteurAutomatique','Bool',''],['AuteurCompte','Text','user.Name if $AuteurAutomatique else ""'],['AuteurCourriel','Text','user.Email if $AuteurAutomatique else ""'],['AuteurID','Int','user.UserID if $AuteurAutomatique else 0']];
-   for(const [col,type,formula] of specs)if(!Object.hasOwn(table,col)){
-    setup.push(['AddColumn','Historique',col,{type}]);
-    if(formula)setup.push(['ModifyColumn','Historique',col,{isFormula:false,formula,recalcWhen:0,recalcDeps:['L']}]);
+   const table=await grist.docApi.fetchTable('Historique');
+   if(!table||!Array.isArray(table.id))throw Error('Réponse inattendue de la table Historique');
+   // Colonne présente : conserver la traçabilité du compte connecté.
+   // Colonne absente : conserver le journal standard sans champ non reconnu.
+   if(Object.hasOwn(table,'AuteurAutomatique')){
+    actions=actions.map(a=>a[0]==='AddRecord'&&a[1]==='Historique'
+      ?[...a.slice(0,3),{...a[3],AuteurAutomatique:true}]:a);
    }
-   actions=[...setup,...actions.map(a=>a[0]==='AddRecord'&&a[1]==='Historique'?[...a.slice(0,3),{...a[3],AuteurAutomatique:true}]:a)];
-  }catch(error){say('Préparation de l’identité GRIST impossible : '+error.message+'. Aucune sauvegarde effectuée.');return false;}
+  }catch(error){
+   say('Contrôle du journal Historique impossible : '+(error.message||error)+'. Aucune sauvegarde lancée.');
+   return false;
+  }
  }
  return writeBeforeIdentity(actions,success);
 };
-
 </script>
 <script>
 function contactPhoneChoices(person){
